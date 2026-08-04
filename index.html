@@ -75,76 +75,33 @@
             pointer-events: none
         }
 
-        #intro-video-wrap {
+        #intro-image-wrap {
             width: 100%;
             max-width: 960px;
             position: relative;
             aspect-ratio: 16/9;
-            background: #000
+            background: #000;
+            overflow: hidden
         }
 
-        #intro-video-wrap video {
+        #intro-image {
             width: 100%;
             height: 100%;
-            object-fit: contain;
-            display: block
+            object-fit: cover;
+            display: block;
+            animation: introZoomOut 2.8s cubic-bezier(.16, .84, .44, 1) forwards;
+            transform-origin: center center
         }
 
-        #video-progress-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 3px;
-            width: 0%;
-            background: linear-gradient(to right, var(--accent), var(--red), var(--purple));
-            transition: width .3s linear;
-            z-index: 2
-        }
-
-        #skip-hint {
-            position: absolute;
-            top: 14px;
-            right: 14px;
-            font-family: var(--font-mono);
-            font-size: 11px;
-            color: rgba(255, 255, 255, .35);
-            letter-spacing: 1px;
-            z-index: 3;
-            transition: opacity .3s
-        }
-
-        #play-overlay {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, .55);
-            cursor: pointer;
-            z-index: 4;
-            transition: opacity .25s
-        }
-
-        #play-overlay.gone {
-            opacity: 0;
-            pointer-events: none
-        }
-
-        #play-circle {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center
-        }
-
-        #play-circle svg {
-            width: 36px;
-            height: 36px;
-            fill: #000;
-            margin-left: 5px
+        @keyframes introZoomOut {
+            0% {
+                transform: scale(1.45);
+                opacity: 0
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1
+            }
         }
 
         #enter-btn-wrap {
@@ -917,6 +874,260 @@
             max-width: 70px
         }
 
+        /* ---- Compact score header (room mode with many participants) ---- */
+        .score-board-room {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap
+        }
+
+        .my-score-pill {
+            background: var(--panel);
+            border: 1px solid rgba(249, 224, 0, .3);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .my-score-pill .sname {
+            font-size: 11px;
+            color: var(--dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-family: var(--font-mono)
+        }
+
+        .my-score-pill .sval {
+            font-family: var(--font-head);
+            font-size: 26px;
+            color: var(--accent);
+            letter-spacing: 2px
+        }
+
+        .rank-badge {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: var(--dim);
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(255, 255, 255, .08);
+            padding: 8px 12px;
+            white-space: nowrap
+        }
+
+        .rank-badge b {
+            color: var(--accent)
+        }
+
+        .btn-leaderboard {
+            background: rgba(249, 224, 0, .08);
+            border: 1px solid rgba(249, 224, 0, .3);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 1px;
+            padding: 8px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all .2s
+        }
+
+        .btn-leaderboard:hover {
+            background: rgba(249, 224, 0, .18);
+            border-color: var(--accent)
+        }
+
+        /* ---- Leaderboard modal ---- */
+        .lb-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 40000;
+            background: rgba(3, 3, 10, .92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px
+        }
+
+        .lb-modal.show {
+            display: flex;
+            animation: fadeInModal .3s ease
+        }
+
+        .lb-modal-content {
+            background: var(--bg2);
+            border: 1px solid rgba(249, 224, 0, .25);
+            max-width: 420px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, .7)
+        }
+
+        .lb-modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            flex-shrink: 0
+        }
+
+        .lb-modal-head h3 {
+            font-family: var(--font-head);
+            letter-spacing: 3px;
+            color: var(--accent);
+            font-size: 20px
+        }
+
+        .lb-modal-close {
+            cursor: pointer;
+            color: var(--dim);
+            font-size: 22px;
+            background: none;
+            border: none;
+            line-height: 1;
+            transition: color .2s
+        }
+
+        .lb-modal-close:hover {
+            color: var(--red)
+        }
+
+        .lb-modal-body {
+            overflow-y: auto;
+            padding: 8px 16px 16px
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, .05)
+        }
+
+        .lb-row.me {
+            background: rgba(249, 224, 0, .07)
+        }
+
+        .lb-rank {
+            font-family: var(--font-head);
+            font-size: 18px;
+            color: var(--dim);
+            width: 30px;
+            text-align: center;
+            flex-shrink: 0
+        }
+
+        .lb-rank.top1 {
+            color: #ffd700
+        }
+
+        .lb-rank.top2 {
+            color: #c0c0c0
+        }
+
+        .lb-rank.top3 {
+            color: #cd7f32
+        }
+
+        .lb-name {
+            flex: 1;
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .lb-pts {
+            font-family: var(--font-head);
+            color: var(--accent);
+            font-size: 18px;
+            flex-shrink: 0
+        }
+
+        /* ---- Participants status: compact summary + collapsible detail ---- */
+        .participants-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px
+        }
+
+        .participants-summary-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap
+        }
+
+        .participants-counts {
+            display: flex;
+            gap: 14px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--dim);
+            flex-wrap: wrap
+        }
+
+        .participants-counts b {
+            color: var(--txt)
+        }
+
+        .pcount-correct b {
+            color: var(--green)
+        }
+
+        .pcount-wrong b {
+            color: var(--red)
+        }
+
+        .pcount-pending b {
+            color: var(--accent)
+        }
+
+        .participants-toggle {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, .12);
+            color: var(--dim);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            padding: 7px 12px;
+            cursor: pointer;
+            transition: all .2s;
+            white-space: nowrap
+        }
+
+        .participants-toggle:hover {
+            border-color: var(--accent);
+            color: var(--accent)
+        }
+
+        .participants-grid-wrap {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .3s ease
+        }
+
+        .participants-grid-wrap.expanded {
+            max-height: 280px;
+            overflow-y: auto;
+            margin-top: 14px;
+            padding-right: 4px
+        }
+
         #drama {
             position: fixed;
             inset: 0;
@@ -1613,15 +1824,8 @@
 <body>
 
     <div id="intro-screen">
-        <div id="intro-video-wrap">
-            <video id="intro-video" playsinline preload="auto" src="https://www.dropbox.com/scl/fi/tjg5msnpfc9lknxhorfx6/Video_Free_Fire_Dibuat.mp4?rlkey=l2ibrehxqs6nzp7w3yjnrpfuo&st=ys25b5c2&dl=1"></video>
-            <div id="video-progress-bar"></div>
-            <div id="skip-hint">▶ Tekan mana saja untuk putar</div>
-            <div id="play-overlay" onclick="startVideo()">
-                <div id="play-circle">
-                    <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
-                </div>
-            </div>
+        <div id="intro-image-wrap">
+            <img id="intro-image" alt="Cepat Tepat">
             <div id="enter-btn-wrap">
                 <button id="enter-btn" onclick="enterQuiz()">⚡ MULAI QUIZ ⚡</button>
                 <div id="enter-sub">Klik untuk masuk ke arena</div>
@@ -1724,7 +1928,18 @@
                 <div class="question-card"><div class="q-text" id="q-text">Memuat soal...</div></div>
                 <div class="options-grid" id="options-grid"></div>
                 <div id="room-participants-section" style="display:none">
-                    <div class="room-participants"><h4>📋 STATUS PESERTA</h4><div class="participants-grid" id="participants-grid"></div></div>
+                    <div class="room-participants">
+                        <div class="participants-summary">
+                            <div class="participants-summary-left">
+                                <h4 style="margin-bottom:0">📋 STATUS PESERTA</h4>
+                                <div class="participants-counts" id="participants-counts"></div>
+                            </div>
+                            <button class="participants-toggle" id="participants-toggle-btn" onclick="toggleParticipantsGrid()">LIHAT DETAIL ▾</button>
+                        </div>
+                        <div class="participants-grid-wrap" id="participants-grid-wrap">
+                            <div class="participants-grid" id="participants-grid"></div>
+                        </div>
+                    </div>
                     <div class="room-control-buttons" id="room-control-buttons"></div>
                 </div>
             </div>
@@ -1792,6 +2007,16 @@
         </div>
     </div>
 
+    <div class="lb-modal" id="lb-modal">
+        <div class="lb-modal-content">
+            <div class="lb-modal-head">
+                <h3>🏆 PAPAN SKOR</h3>
+                <button class="lb-modal-close" onclick="closeLeaderboardModal()">✕</button>
+            </div>
+            <div class="lb-modal-body" id="lb-modal-body"></div>
+        </div>
+    </div>
+
     <div class="video-modal" id="video-modal">
         <div class="video-modal-content">
             <span class="close-video" onclick="closeVideoModal()">✕</span>
@@ -1801,6 +2026,9 @@
         </div>
     </div>
 
+    <!-- Firebase (Firestore) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script>
         (function() {
                 const GAS_URL = 'https://script.google.com/macros/s/AKfycby7v8yA3gJOoYP8kJO3BSAcBABbUz4w-6HYKqekFcOXHnj-VJXwHHK_lzC-DZX3g_oE/exec';
@@ -1843,6 +2071,7 @@
                     readingPhaseActive: false,
                     readingPhaseTimer: null,
                     readingPhaseTimeLeft: 15,
+                    participantsExpanded: false,
                 };
 
                 const DEMO_SOAL = [
@@ -1927,6 +2156,10 @@
                         const url = link.getAttribute('data-video');
                         if (url) openVideoModal(url);
                     }
+                });
+
+                document.getElementById('lb-modal').addEventListener('click', function(e) {
+                    if (e.target === this) closeLeaderboardModal();
                 });
 
                 document.getElementById('video-modal').addEventListener('click', function(e) {
@@ -2020,67 +2253,22 @@
 
                 const introScreen = document.getElementById('intro-screen');
                 const quizApp = document.getElementById('quiz-app');
-                const video = document.getElementById('intro-video');
-                const progressBar = document.getElementById('video-progress-bar');
-                const playOverlay = document.getElementById('play-overlay');
+                const introImage = document.getElementById('intro-image');
                 const enterBtnWrap = document.getElementById('enter-btn-wrap');
-                const skipHint = document.getElementById('skip-hint');
-                let videoStarted = false;
-                let videoErrorShown = false;
 
-                function showEnterBtn() { if (!videoErrorShown) enterBtnWrap.classList.add('visible'); }
+                const DRIVE_FILE_ID = "1yTZeAuc0NtiGVd3MT_vTj1E2F4VmOLhL";
+                const INTRO_IMAGE_URL = "https://drive.google.com/thumbnail?id=" + DRIVE_FILE_ID + "&sz=w1600";
+                introImage.src = INTRO_IMAGE_URL;
 
-                window.addEventListener('load', () => {
-                    video.muted = true;
-                    const p = video.play();
-                    if (p !== undefined) {
-                        p.then(() => {
-                            videoStarted = true;
-                            playOverlay.classList.add('gone');
-                            skipHint.style.opacity = '0';
-                            video.muted = false;
-                        }).catch(() => {
-                            video.muted = false;
-                            playOverlay.classList.remove('gone');
-                            skipHint.textContent = '▶ Tap untuk mulai video';
-                        });
-                    } else {
-                        playOverlay.classList.remove('gone');
-                    }
-                });
+                let enterBtnShown = false;
 
-                function startVideo() {
-                    if (videoStarted) return;
-                    videoStarted = true;
-                    playOverlay.classList.add('gone');
-                    skipHint.style.opacity = '0';
-                    video.muted = false;
-                    video.play().catch(() => {
-                        video.muted = true;
-                        video.play().catch(() => { showVideoSkipFallback(); });
-                    });
-                }
+                function showEnterBtn() { if (enterBtnShown) return;
+                    enterBtnShown = true;
+                    enterBtnWrap.classList.add('visible'); }
 
-                function showVideoSkipFallback() {
-                    if (videoErrorShown) return;
-                    videoErrorShown = true;
-                    playOverlay.classList.add('gone');
-                    const skipDiv = document.createElement('div');
-                    skipDiv.style.cssText =
-                        'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.85);z-index:6;gap:16px;';
-                    skipDiv.innerHTML =
-                        `<div style="font-family:var(--font-mono);font-size:13px;color:rgba(255,255,255,.4);letter-spacing:2px">VIDEO TIDAK DAPAT DIMUAT</div><button onclick="enterQuiz()" style="font-family:var(--font-head);font-size:clamp(18px,4vw,30px);letter-spacing:4px;background:var(--accent);color:#000;border:none;padding:14px 40px;cursor:pointer;animation:pulseBtn 1.8s infinite">⚡ MASUK QUIZ ⚡</button>`;
-                    document.getElementById('intro-video-wrap').appendChild(skipDiv);
-                }
-
-                video.addEventListener('timeupdate', () => { if (video.duration) progressBar.style.width = ((video
-                        .currentTime / video.duration) * 100) + '%'; });
-                video.addEventListener('ended', () => { showEnterBtn(); });
-                video.addEventListener('error', () => {
-                    if (videoStarted) { showVideoSkipFallback(); } else { playOverlay.classList.remove('gone');
-                        skipHint.textContent = '▶ Tap — atau video tidak tersedia';
-                        setTimeout(() => { if (!videoStarted) showVideoSkipFallback(); }, 5000); }
-                });
+                introImage.addEventListener('animationend', showEnterBtn, { once: true });
+                introImage.addEventListener('error', showEnterBtn);
+                setTimeout(showEnterBtn, 3500);
 
                 function enterQuiz() { introScreen.classList.add('hidden');
                     quizApp.classList.add('visible');
@@ -2310,13 +2498,26 @@
                     const grid = document.getElementById('participants-grid');
                     if (STATE.mode !== 'room') { section.style.display = 'none'; return; }
                     section.style.display = 'block';
+
+                    // Sort so answered participants (winner first, then correct, then wrong)
+                    // surface above the ones still pending — most relevant info stays visible
+                    // even when the detail list is scrolled/collapsed.
+                    const entries = Object.entries(STATE.players).sort(([idA], [idB]) => {
+                        const rank = id => id === STATE.roomWinnerId ? 0 :
+                            STATE.roomAnsweredUsers[id]?.isCorrect ? 1 :
+                            STATE.roomAnsweredUsers[id] ? 2 : 3;
+                        return rank(idA) - rank(idB);
+                    });
+
                     grid.innerHTML = '';
-                    Object.entries(STATE.players).forEach(([id, p]) => {
+                    let nCorrect = 0, nWrong = 0;
+                    entries.forEach(([id, p]) => {
                         const ans = STATE.roomAnsweredUsers[id];
                         const item = document.createElement('div');
                         item.className = 'participant-item';
                         if (ans) {
                             item.classList.add(ans.isCorrect ? 'answered-correct' : 'answered-wrong');
+                            ans.isCorrect ? nCorrect++ : nWrong++;
                             item.innerHTML =
                                 `<span>${id===STATE.roomWinnerId?'🏆':ans.isCorrect?'✅':'❌'}</span><span class="participant-name">${p.nama}</span>`;
                         } else {
@@ -2325,6 +2526,25 @@
                         }
                         grid.appendChild(item);
                     });
+
+                    const total = entries.length;
+                    const nPending = total - nCorrect - nWrong;
+                    const countsEl = document.getElementById('participants-counts');
+                    if (countsEl) {
+                        countsEl.innerHTML =
+                            `<span class="pcount-pending">⏳ <b>${nPending}</b> belum jawab</span>` +
+                            `<span class="pcount-correct">✅ <b>${nCorrect}</b> benar</span>` +
+                            `<span class="pcount-wrong">❌ <b>${nWrong}</b> salah</span>`;
+                    }
+
+                    const wrap = document.getElementById('participants-grid-wrap');
+                    const toggleBtn = document.getElementById('participants-toggle-btn');
+                    if (wrap && toggleBtn) {
+                        wrap.classList.toggle('expanded', STATE.participantsExpanded);
+                        toggleBtn.textContent = STATE.participantsExpanded ?
+                            `SEMBUNYIKAN (${total}) ▲` : `LIHAT DETAIL (${total}) ▾`;
+                    }
+
                     const controlsDiv = document.getElementById('room-control-buttons');
                     controlsDiv.innerHTML = '';
                     if (STATE.isHost) {
@@ -2334,6 +2554,11 @@
                         btnNext.onclick = () => nextQuestion();
                         controlsDiv.appendChild(btnNext);
                     }
+                }
+
+                function toggleParticipantsGrid() {
+                    STATE.participantsExpanded = !STATE.participantsExpanded;
+                    renderRoomParticipants();
                 }
 
                 function showRoomCorrectPopup(nama, pts, isMe) {
@@ -2436,6 +2661,23 @@
 
                 function renderScoreBoard() {
                     const board = document.getElementById('score-board');
+                    // Room mode with many participants: keep the header compact.
+                    // Show only my score + rank, with a button to open the full leaderboard.
+                    if (STATE.mode === 'room') {
+                        board.className = 'score-board-room';
+                        const ranked = Object.entries(STATE.scores)
+                            .sort((a, b) => b[1] - a[1]);
+                        const myRank = ranked.findIndex(([id]) => id === STATE.myId) + 1;
+                        const myScore = STATE.scores[STATE.myId] || 0;
+                        board.innerHTML = `
+                            <div class="my-score-pill"><div class="sname">SKOR SAYA</div><div class="sval">${myScore}</div></div>
+                            <div class="rank-badge">PERINGKAT <b>#${myRank || '-'}</b> / ${ranked.length}</div>
+                            <button class="btn-leaderboard" onclick="openLeaderboardModal()">🏆 RANKING</button>
+                        `;
+                        renderLeaderboardModal();
+                        return;
+                    }
+                    board.className = 'score-board';
                     board.innerHTML = '';
                     Object.entries(STATE.scores).forEach(([id, pts]) => {
                         const p = STATE.players[id];
@@ -2445,6 +2687,31 @@
                         `<div class="sname">${p?.nama||id}</div><div class="sval">${pts}</div>`;
                         board.appendChild(box);
                     });
+                }
+
+                function renderLeaderboardModal() {
+                    const body = document.getElementById('lb-modal-body');
+                    if (!body) return;
+                    const ranked = Object.entries(STATE.scores).sort((a, b) => b[1] - a[1]);
+                    body.innerHTML = ranked.map(([id, pts], i) => {
+                        const p = STATE.players[id];
+                        const rankCls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+                        return `<div class="lb-row${id===STATE.myId?' me':''}">
+                            <div class="lb-rank ${rankCls}">${medal}</div>
+                            <div class="lb-name">${p?.nama || id}${id===STATE.myId?' (Kamu)':''}</div>
+                            <div class="lb-pts">${pts}</div>
+                        </div>`;
+                    }).join('');
+                }
+
+                function openLeaderboardModal() {
+                    renderLeaderboardModal();
+                    document.getElementById('lb-modal').classList.add('show');
+                }
+
+                function closeLeaderboardModal() {
+                    document.getElementById('lb-modal').classList.remove('show');
                 }
 
                 async function endGame() {
@@ -2573,30 +2840,93 @@
                     } catch (e) { return false; }
                 }
 
-                const FB_URL = 'https://cerdas-cermat-d3525-default-rtdb.asia-southeast1.firebasedatabase.app';
+                // === Firestore config ===
+                // Ambil dari: Firebase Console > Project Settings > General > "Your apps" > Web app > SDK setup and configuration
+                // Kalau belum ada Web App di project ini, klik "Add app" > Web (</>) dulu untuk generate config di bawah.
+                const firebaseConfig = {
+                    apiKey: "AIzaSyAsncNc-hfMaoS2ATZ0TjA-IQeTDsOcFbw",
+                    authDomain: "cerdascermat-ed96b.firebaseapp.com",
+                    projectId: "cerdascermat-ed96b",
+                    storageBucket: "cerdascermat-ed96b.firebasestorage.app",
+                    messagingSenderId: "1040863914531",
+                    appId: "1:1040863914531:web:c79e3f8c2d4f8aedb2df96"
+                };
+                firebase.initializeApp(firebaseConfig);
+                const db = firebase.firestore();
+                const FieldValue = firebase.firestore.FieldValue;
 
                 function genRoomCode() { return Math.random().toString(36).substr(2, 4).toUpperCase(); }
-                async function fbGet(path) { try { const r = await fetch(`${FB_URL}${path}.json`); return r.ok ? r.json() :
-                        null; } catch (e) { return null; } }
-                async function fbSet(path, data) { await fetch(`${FB_URL}${path}.json`, { method: 'PUT', body: JSON.stringify(
-                        data), headers: { 'Content-Type': 'application/json' } }); }
-                async function fbPatch(path, data) { await fetch(`${FB_URL}${path}.json`, { method: 'PATCH', body: JSON
-                        .stringify(data), headers: { 'Content-Type': 'application/json' } }); }
-                async function fbDelete(path) { await fetch(`${FB_URL}${path}.json`, { method: 'DELETE' }); }
 
-                let fbEventSource = null;
-
-                function fbListen(path, cb) {
-                    if (fbEventSource) { fbEventSource.close();
-                        fbEventSource = null; }
-                    fbEventSource = new EventSource(`${FB_URL}${path}.json`);
-                    fbEventSource.addEventListener('put', e => { try { cb(JSON.parse(e.data)); } catch (ex) {} });
-                    fbEventSource.addEventListener('patch', e => { try { cb(JSON.parse(e.data)); } catch (ex) {} });
-                    fbEventSource.onerror = () => {};
+                // Semua data room disimpan dalam SATU dokumen: rooms/{roomCode}
+                // "players" dan "answers" adalah field bertipe Map di dalam dokumen itu (bukan subcollection),
+                // supaya perilaku merge/patch persis seperti struktur RTDB sebelumnya.
+                function parseRoomPath(path) {
+                    const parts = path.split('/').filter(Boolean); // ['rooms', code, ...rest]
+                    const roomCode = parts[1];
+                    const fieldPath = parts.slice(2).join('.'); // '' | 'players' | 'players.p1' | 'answers'
+                    return { roomCode, fieldPath };
                 }
 
-                function fbUnlisten() { if (fbEventSource) { fbEventSource.close();
-                        fbEventSource = null; } }
+                async function fbGet(path) {
+                    const { roomCode, fieldPath } = parseRoomPath(path);
+                    try {
+                        const snap = await db.collection('rooms').doc(roomCode).get();
+                        if (!snap.exists) return null;
+                        const data = snap.data();
+                        if (!fieldPath) return data;
+                        const val = fieldPath.split('.').reduce((o, k) => (o == null ? undefined : o[k]), data);
+                        return val === undefined ? null : val;
+                    } catch (e) { return null; }
+                }
+
+                async function fbSet(path, data) {
+                    const { roomCode, fieldPath } = parseRoomPath(path);
+                    const ref = db.collection('rooms').doc(roomCode);
+                    try {
+                        if (!fieldPath) {
+                            await ref.set(data); // buat/timpa seluruh dokumen room (dipakai saat host membuat room)
+                        } else {
+                            await ref.update({ [fieldPath]: data === null ? {} : data });
+                        }
+                    } catch (e) {}
+                }
+
+                async function fbPatch(path, data) {
+                    const { roomCode, fieldPath } = parseRoomPath(path);
+                    const ref = db.collection('rooms').doc(roomCode);
+                    let payload;
+                    if (!fieldPath) {
+                        payload = data; // merge field top-level (mis. { status, currentQIdx, buzzer })
+                    } else if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
+                        payload = {};
+                        Object.entries(data).forEach(([k, v]) => { payload[`${fieldPath}.${k}`] = v; });
+                    } else {
+                        payload = { [fieldPath]: data };
+                    }
+                    try { await ref.update(payload); } catch (e) {}
+                }
+
+                async function fbDelete(path) {
+                    const { roomCode, fieldPath } = parseRoomPath(path);
+                    const ref = db.collection('rooms').doc(roomCode);
+                    try {
+                        if (!fieldPath) { await ref.delete(); } else { await ref.update({ [fieldPath]: FieldValue.delete() }); }
+                    } catch (e) {}
+                }
+
+                let fbUnsub = null;
+
+                function fbListen(path, cb) {
+                    if (fbUnsub) { fbUnsub();
+                        fbUnsub = null; }
+                    const { roomCode } = parseRoomPath(path);
+                    fbUnsub = db.collection('rooms').doc(roomCode).onSnapshot(snap => {
+                        cb({ data: snap.exists ? snap.data() : undefined });
+                    }, () => {});
+                }
+
+                function fbUnlisten() { if (fbUnsub) { fbUnsub();
+                        fbUnsub = null; } }
 
                 let answersPollInterval = null;
 
@@ -2623,6 +2953,7 @@
                                     if (!STATE.players[id]) STATE.players[id] = {};
                                     if (p.nama !== undefined) STATE.players[id].nama = p.nama;
                                     if (p.kelas !== undefined) STATE.players[id].kelas = p.kelas;
+                                    if (id === STATE.myId) { if (!(id in STATE.scores)) STATE.scores[id] = p.score || 0; return; }
                                     if (p.score !== undefined) STATE.scores[id] = p.score;
                                     else if (!(id in STATE.scores)) STATE.scores[id] = 0;
                                 });
@@ -2732,6 +3063,7 @@
                                 if (!STATE.players[id]) STATE.players[id] = {};
                                 if (p.nama !== undefined) STATE.players[id].nama = p.nama;
                                 if (p.kelas !== undefined) STATE.players[id].kelas = p.kelas;
+                                if (id === STATE.myId && STATE.gameActive) { if (!(id in STATE.scores)) STATE.scores[id] = p.score || 0; return; }
                                 if (p.score !== undefined) STATE.scores[id] = p.score;
                                 else if (!(id in STATE.scores)) STATE.scores[id] = 0;
                             });
@@ -2961,8 +3293,10 @@
                 window.leaveRoom = leaveRoom;
                 window.playAgain = playAgain;
                 window.enterQuiz = enterQuiz;
-                window.startVideo = startVideo;
                 window.closeVideoModal = closeVideoModal;
+                window.toggleParticipantsGrid = toggleParticipantsGrid;
+                window.openLeaderboardModal = openLeaderboardModal;
+                window.closeLeaderboardModal = closeLeaderboardModal;
 
                 document.addEventListener('DOMContentLoaded', () => { initAudio();
                     preloadSoal(); });
