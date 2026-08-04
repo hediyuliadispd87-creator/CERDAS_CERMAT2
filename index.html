@@ -1867,6 +1867,7 @@
                         <div class="field"><label>Kelas</label><input type="text" id="in-kelas" placeholder="Contoh: 8A"></div>
                         <div class="field"><label>Jumlah Soal</label><input type="number" id="in-jumlah" value="10" min="1" max="50" placeholder="Contoh: 10"><div class="field-hint">Min 1 · Maks 50</div></div>
                     </div>
+                    <div class="field"><label>Mata Pelajaran</label><select id="in-mapel"><option value="">⏳ Memuat mata pelajaran...</option></select></div>
                     <div class="field"><label>Tingkat Kesulitan</label><select id="in-diff"><option value="easy">🟢 Mudah (30 detik/soal)</option><option value="normal" selected>🟡 Normal (20 detik/soal)</option><option value="hard">🔴 Susah (10 detik/soal)</option></select></div>
                     <div id="ai-level-field" class="field" style="display:none"><label>Level AI</label><select id="in-ailevel"><option value="easy">🤖 Pemula (55% benar)</option><option value="normal" selected>🤖 Normal (70% benar)</option><option value="hard">🤖 Expert (88% benar)</option></select></div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px"><button class="btn btn-ghost" onclick="showScreen('screen-home')">← Kembali</button><button class="btn btn-primary" onclick="startGame()">MULAI ⚡</button></div>
@@ -1878,6 +1879,7 @@
                     <h2>ROOM ONLINE</h2>
                     <div class="field"><label>Nama Kamu</label><input type="text" id="in-nama-room" placeholder="Masukkan nama"></div>
                     <div class="field"><label>Kelas</label><input type="text" id="in-kelas-room" placeholder="Contoh: 8A"></div>
+                    <div class="field"><label>Mata Pelajaran</label><select id="in-mapel-room"><option value="">⏳ Memuat mata pelajaran...</option></select></div>
                     <div class="field"><label>Jumlah Soal</label><input type="number" id="in-jumlah-room" value="10" min="1" max="50" placeholder="Contoh: 10"><div class="field-hint">Min 1 · Maks 50</div></div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px"><button class="btn btn-primary" onclick="createRoom()">+ BUAT ROOM</button><button class="btn btn-ghost" onclick="showScreen('screen-room-join')">JOIN ROOM →</button></div>
                     <div style="margin-top:12px"><button class="btn btn-ghost" onclick="showScreen('screen-home')">← Kembali</button></div>
@@ -2042,11 +2044,28 @@
                     'Visioner TOP GLOBAL': 'https://dl.dropboxusercontent.com/scl/fi/jksdqoeoqwmihr1lijrfo/VISIONER-GLOBAL.mp4?rlkey=aa92rbgh9zkcnidkruz94rz8q'
                 };
 
+                const MAPEL_LABELS = {
+                    'PAIBP': '🕌 PAIBP',
+                    'INDO': '📖 B. Indonesia',
+                    'MTK': '🔢 Matematika',
+                    'IPA': '🔬 IPA',
+                    'IPS': '🌍 IPS',
+                    'INGGRIS': '🇬🇧 B. Inggris',
+                    'PPKN': '🇮🇩 PPKn',
+                    'SUNDA': '🗣️ Basa Sunda',
+                    'PJOK': '⚽ PJOK',
+                    'TIK(KKA)': '💻 TIK / KKA',
+                    'SBK': '🎨 SBK',
+                };
+                const SUBJECTS_FALLBACK = Object.keys(MAPEL_LABELS);
+
                 const STATE = {
                     gasUrl: GAS_URL,
                     mode: 'solo',
                     nama: '',
                     kelas: '',
+                    mapel: '',
+                    mapelList: [],
                     diff: 'normal',
                     aiLevel: 'normal',
                     soalAll: [],
@@ -2274,22 +2293,66 @@
                     quizApp.classList.add('visible');
                     setTimeout(() => { introScreen.style.display = 'none'; }, 700); }
 
+                function fillMapelSelect(selectEl) {
+                    if (!selectEl) return;
+                    const list = STATE.mapelList.length ? STATE.mapelList : SUBJECTS_FALLBACK;
+                    selectEl.innerHTML = list.map(m =>
+                        `<option value="${m}">${MAPEL_LABELS[m] || m}</option>`
+                    ).join('');
+                }
+
                 async function preloadSoal() {
                     const statusEl = document.getElementById('preload-status');
-                    if (!STATE.gasUrl) { STATE.soalAll = DEMO_SOAL.map(s => ({ ...s })); if (statusEl) statusEl.innerHTML =
-                            '<span style="color:var(--green)">✅ Soal siap (offline mode)</span>'; return; }
+                    if (!STATE.gasUrl) {
+                        STATE.mapelList = SUBJECTS_FALLBACK;
+                        fillMapelSelect(document.getElementById('in-mapel'));
+                        fillMapelSelect(document.getElementById('in-mapel-room'));
+                        if (statusEl) statusEl.innerHTML =
+                            '<span style="color:var(--green)">✅ Siap (offline mode)</span>';
+                        return;
+                    }
                     try {
-                        statusEl.innerHTML = '<span class="blink">⏳ Memuat soal...</span>';
+                        if (statusEl) statusEl.innerHTML = '<span class="blink">⏳ Memuat mata pelajaran...</span>';
                         const controller = new AbortController();
                         const timeout = setTimeout(() => controller.abort(), 8000);
-                        const r = await fetch(STATE.gasUrl + '?action=getSoal', { signal: controller.signal });
+                        const r = await fetch(STATE.gasUrl + '?action=getMapel', { signal: controller.signal });
                         clearTimeout(timeout);
                         const d = await r.json();
-                        if (d.status === 'ok' && d.data.length > 0) { STATE.soalAll = d.data; if (statusEl) statusEl
-                                .innerHTML = '<span style="color:var(--green)">✅ ' + d.data.length +
-                                ' soal siap!</span>'; } else throw new Error('No data');
-                    } catch (e) { STATE.soalAll = DEMO_SOAL.map(s => ({ ...s })); if (statusEl) statusEl.innerHTML =
-                            '<span style="color:var(--accent)">⚠ Pakai soal offline</span>'; }
+                        if (d.status === 'ok' && d.data.length > 0) { STATE.mapelList = d.data; } else throw new Error(
+                            'No mapel');
+                        fillMapelSelect(document.getElementById('in-mapel'));
+                        fillMapelSelect(document.getElementById('in-mapel-room'));
+                        if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ ' + STATE.mapelList
+                            .length + ' mata pelajaran siap!</span>';
+                    } catch (e) {
+                        STATE.mapelList = SUBJECTS_FALLBACK;
+                        fillMapelSelect(document.getElementById('in-mapel'));
+                        fillMapelSelect(document.getElementById('in-mapel-room'));
+                        if (statusEl) statusEl.innerHTML =
+                            '<span style="color:var(--accent)">⚠ Daftar mapel offline</span>';
+                    }
+                }
+
+                async function loadSoalUntukMapel(mapel) {
+                    if (!STATE.gasUrl) { STATE.soalAll = DEMO_SOAL.map(s => ({ ...s })); return true; }
+                    try {
+                        const controller = new AbortController();
+                        const timeout = setTimeout(() => controller.abort(), 8000);
+                        const r = await fetch(STATE.gasUrl + '?action=getSoal&mapel=' + encodeURIComponent(mapel), {
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeout);
+                        const d = await r.json();
+                        if (d.status === 'ok' && d.data.length > 0) { STATE.soalAll = d.data;
+                            return true; }
+                        toast('⚠ Soal untuk mapel ini belum tersedia, pakai soal offline');
+                        STATE.soalAll = DEMO_SOAL.map(s => ({ ...s }));
+                        return false;
+                    } catch (e) {
+                        toast('⚠ Gagal memuat soal, pakai soal offline');
+                        STATE.soalAll = DEMO_SOAL.map(s => ({ ...s }));
+                        return false;
+                    }
                 }
 
                 function showScreen(id) {
@@ -2310,15 +2373,19 @@
                     const nama = document.getElementById('in-nama').value.trim();
                     const kelas = document.getElementById('in-kelas').value.trim();
                     if (!nama) { toast('⚠ Masukkan nama kamu!'); return; }
+                    const mapel = document.getElementById('in-mapel').value;
+                    if (!mapel) { toast('⚠ Pilih mata pelajaran dulu!'); return; }
                     STATE.nama = nama;
                     STATE.kelas = kelas || '-';
+                    STATE.mapel = mapel;
                     STATE.diff = document.getElementById('in-diff').value;
                     STATE.aiLevel = document.getElementById('in-ailevel')?.value || 'normal';
                     let jumlah = parseInt(document.getElementById('in-jumlah').value);
                     if (isNaN(jumlah) || jumlah < 1) { toast('⚠ Jumlah soal minimal 1!'); return; }
                     if (jumlah > 50) { toast('⚠ Jumlah soal maksimal 50!'); return; }
                     STATE.maxTime = { easy: 30, normal: 20, hard: 10 } [STATE.diff];
-                    if (STATE.soalAll.length === 0) STATE.soalAll = DEMO_SOAL.map(s => ({ ...s }));
+                    toast('⏳ Memuat soal ' + (MAPEL_LABELS[mapel] || mapel) + '...', 4000);
+                    await loadSoalUntukMapel(mapel);
                     const shuffled = [...STATE.soalAll].sort(() => Math.random() - .5);
                     STATE.soalGame = shuffled.slice(0, Math.min(jumlah, shuffled.length));
                     STATE.idx = 0;
@@ -2998,12 +3065,17 @@
                 async function createRoom() {
                     const nama = document.getElementById('in-nama-room').value.trim();
                     const kelas = document.getElementById('in-kelas-room').value.trim();
+                    const mapel = document.getElementById('in-mapel-room').value;
                     let jumlah = parseInt(document.getElementById('in-jumlah-room').value);
                     if (!nama) { toast('⚠ Masukkan nama!'); return; }
+                    if (!mapel) { toast('⚠ Pilih mata pelajaran dulu!'); return; }
                     if (isNaN(jumlah) || jumlah < 1) { toast('⚠ Jumlah soal minimal 1!'); return; }
                     if (jumlah > 50) { toast('⚠ Maksimal 50 soal!'); return; }
                     STATE.nama = nama;
                     STATE.kelas = kelas || '-';
+                    STATE.mapel = mapel;
+                    toast('⏳ Memuat soal ' + (MAPEL_LABELS[mapel] || mapel) + '...', 4000);
+                    await loadSoalUntukMapel(mapel);
                     STATE.roomCode = genRoomCode();
                     STATE.isHost = true;
                     STATE.myId = 'p_' + Date.now();
@@ -3276,7 +3348,8 @@
                 async function verifyWithGASBackground(id, jawaban, localResult) {
                     try {
                         const r = await fetch(
-                        `${STATE.gasUrl}?action=cekJawaban&id=${id}&jawaban=${jawaban}`);
+                        `${STATE.gasUrl}?action=cekJawaban&id=${id}&jawaban=${jawaban}&mapel=${encodeURIComponent(STATE.mapel)}`
+                        );
                         const d = await r.json();
                         if (localResult !== d.benar) console.warn('verification mismatch');
                     } catch (e) {}
