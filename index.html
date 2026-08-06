@@ -1577,6 +1577,60 @@
             display: flex
         }
 
+        #soal-fail-popup {
+            position: fixed;
+            inset: 0;
+            z-index: 25000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .8);
+            backdrop-filter: blur(6px)
+        }
+
+        #soal-fail-popup.show {
+            display: flex
+        }
+
+        #soal-fail-card {
+            text-align: center;
+            padding: 40px 32px;
+            border: 3px solid var(--red);
+            background: var(--panel);
+            animation: fadeUp .3s ease;
+            max-width: 90vw;
+            width: 420px
+        }
+
+        .sfp-icon {
+            font-size: 56px;
+            margin-bottom: 10px
+        }
+
+        .sfp-label {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 3px;
+            color: var(--red);
+            text-transform: uppercase;
+            margin-bottom: 10px
+        }
+
+        .sfp-title {
+            font-family: var(--font-head);
+            font-size: clamp(24px, 6vw, 32px);
+            letter-spacing: 1px;
+            color: var(--txt)
+        }
+
+        .sfp-sub {
+            font-family: var(--font-body);
+            font-size: 15px;
+            color: var(--dim);
+            margin-top: 10px;
+            line-height: 1.4
+        }
+
         #room-correct-card {
             text-align: center;
             padding: 40px 48px;
@@ -2009,6 +2063,20 @@
         </div>
     </div>
 
+    <div id="soal-fail-popup">
+        <div id="soal-fail-card">
+            <div class="sfp-icon">⚠️</div>
+            <div class="sfp-label">GAGAL MEMUAT SOAL</div>
+            <div class="sfp-title">Sudah dicoba 3x, tapi tetap gagal</div>
+            <div class="sfp-sub" id="sfp-sub">Server soal online tidak merespon. Kamu bisa coba lagi atau lanjut pakai
+                soal offline.</div>
+            <div class="btn-row" style="margin-top:20px">
+                <button class="btn btn-primary" id="sfp-btn-retry">🔄 Coba Lagi</button>
+                <button class="btn btn-ghost" id="sfp-btn-offline">📴 Lanjut Soal Offline</button>
+            </div>
+        </div>
+    </div>
+
     <div class="lb-modal" id="lb-modal">
         <div class="lb-modal-content">
             <div class="lb-modal-head">
@@ -2333,8 +2401,14 @@
                     }
                 }
 
+                const SOAL_MAX_RETRY = 3;
+
                 async function loadSoalUntukMapel(mapel) {
                     if (!STATE.gasUrl) { STATE.soalAll = DEMO_SOAL.map(s => ({ ...s })); return true; }
+                    return await fetchSoalWithRetry(mapel, 1);
+                }
+
+                async function fetchSoalWithRetry(mapel, attempt) {
                     try {
                         const controller = new AbortController();
                         const timeout = setTimeout(() => controller.abort(), 8000);
@@ -2345,14 +2419,49 @@
                         const d = await r.json();
                         if (d.status === 'ok' && d.data.length > 0) { STATE.soalAll = d.data;
                             return true; }
-                        toast('⚠ Soal untuk mapel ini belum tersedia, pakai soal offline');
-                        STATE.soalAll = DEMO_SOAL.map(s => ({ ...s }));
-                        return false;
+                        throw new Error('Soal kosong / status tidak ok');
                     } catch (e) {
-                        toast('⚠ Gagal memuat soal, pakai soal offline');
-                        STATE.soalAll = DEMO_SOAL.map(s => ({ ...s }));
-                        return false;
+                        if (attempt < SOAL_MAX_RETRY) {
+                            toast(`⚠ Gagal memuat soal (percobaan ${attempt}/${SOAL_MAX_RETRY}), mencoba lagi...`,
+                                2200);
+                            await new Promise(res => setTimeout(res, 900 * attempt));
+                            return await fetchSoalWithRetry(mapel, attempt + 1);
+                        }
+                        return await waitSoalFailChoice(mapel);
                     }
+                }
+
+                function waitSoalFailChoice(mapel) {
+                    return new Promise(resolve => {
+                        const popup = document.getElementById('soal-fail-popup');
+                        const btnRetry = document.getElementById('sfp-btn-retry');
+                        const btnOffline = document.getElementById('sfp-btn-offline');
+                        const subEl = document.getElementById('sfp-sub');
+                        if (subEl) subEl.textContent =
+                            `Gagal memuat soal untuk "${MAPEL_LABELS[mapel] || mapel}" setelah ${SOAL_MAX_RETRY}x percobaan. Kamu bisa coba lagi atau lanjut pakai soal offline.`;
+                        popup.classList.add('show');
+
+                        function cleanup() {
+                            popup.classList.remove('show');
+                            btnRetry.removeEventListener('click', onRetry);
+                            btnOffline.removeEventListener('click', onOffline);
+                        }
+
+                        async function onRetry() {
+                            cleanup();
+                            toast('🔄 Mencoba lagi memuat soal online...', 2000);
+                            resolve(await fetchSoalWithRetry(mapel, 1));
+                        }
+
+                        function onOffline() {
+                            cleanup();
+                            toast('📴 Melanjutkan dengan soal offline');
+                            STATE.soalAll = DEMO_SOAL.map(s => ({ ...s }));
+                            resolve(false);
+                        }
+                        btnRetry.addEventListener('click', onRetry);
+                        btnOffline.addEventListener('click', onOffline);
+                    });
                 }
 
                 function showScreen(id) {
