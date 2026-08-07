@@ -2158,10 +2158,9 @@
                     readingPhaseActive: false,
                     readingPhaseTimer: null,
                     readingPhaseTimeLeft: 15,
+                    questionStartAt: 0,
                     participantsExpanded: false,
-                    qStartedAt: 0,
                 };
-                const READING_PHASE_SECONDS = 15;
 
                 const DEMO_SOAL = [
                     { id: 1, soal: "Ibukota Indonesia adalah …", opt_a: "Bandung", opt_b: "Surabaya", opt_c: "Jakarta", opt_d: "Medan",
@@ -2512,24 +2511,24 @@
                     loadQuestion();
                 }
 
-                function loadQuestion(skipHostBroadcast) {
+                function loadQuestion(startAt) {
                     if (STATE.idx >= STATE.soalGame.length) { endGame(); return; }
                     hideRoomCorrectPopup();
-                    if (STATE.mode === 'room') {
-                        // qStartedAt = titik waktu absolut (client time) saat soal ini "resmi" dimulai.
-                        // Semua klien (host & guest) menghitung sisa waktu baca/jawab dari titik yang SAMA ini,
-                        // bukan dari kapan masing-masing device menerima update -> menghilangkan delay/desinkron
-                        // akibat variasi latensi jaringan antar user.
-                        if (STATE.isHost && !skipHostBroadcast) {
-                            STATE.qStartedAt = Date.now();
+                    if (STATE.mode === 'room' && STATE.isHost) {
+                        // Host adalah sumber kebenaran waktu: kalau startAt belum disiapkan oleh
+                        // pemanggil (mis. startRoomGame), buat sekarang & simpan ke Firestore
+                        // supaya SEMUA peserta menghitung mundur dari titik waktu yang SAMA persis,
+                        // bukan dari kapan device masing-masing menerima update (yang bisa beda2
+                        // karena delay jaringan).
+                        if (startAt === undefined) {
+                            startAt = Date.now();
                             fbSet(`/rooms/${STATE.roomCode}/answers`, null).catch(() => {});
-                            fbPatch(`/rooms/${STATE.roomCode}`, { currentQIdx: STATE.idx, buzzer: null,
-                                qStartedAt: STATE.qStartedAt }).catch(() => {});
+                            fbPatch(`/rooms/${STATE.roomCode}`, { currentQIdx: STATE.idx, buzzer: null, questionStartAt: startAt }).catch(() => {});
                         }
-                        if (!STATE.qStartedAt) STATE.qStartedAt = Date.now(); // fallback pengaman
-                    } else {
-                        STATE.qStartedAt = Date.now();
+                    } else if (STATE.mode !== 'room') {
+                        startAt = Date.now();
                     }
+                    STATE.questionStartAt = startAt;
                     const soal = STATE.soalGame[STATE.idx];
                     STATE.answered = false;
                     STATE.roomAnsweredUsers = {};
@@ -2558,42 +2557,32 @@
                     }
                 }
 
+                const READING_PHASE_SECONDS = 15;
+
                 function startReadingPhase() {
                     STATE.readingPhaseActive = true;
-                    STATE.readingPhaseTimeLeft = READING_PHASE_SECONDS;
                     document.getElementById('reading-phase-indicator').classList.add('active');
                     disableAllOptionsForReading();
                     if (STATE.readingPhaseTimer) clearInterval(STATE.readingPhaseTimer);
-                    if (STATE.mode === 'room') {
-                        // Mode room: hitung sisa waktu dari qStartedAt (titik waktu bersama), bukan dari 15 penuh.
-                        // Kalau device telat terima update Firestore, dia langsung dapat sisa waktu yang benar
-                        // (bukan mulai 15 detik baru), jadi semua user tetap serempak.
-                        const tick = () => {
-                            const elapsed = (Date.now() - STATE.qStartedAt) / 1000;
-                            if (elapsed < READING_PHASE_SECONDS) {
-                                const left = Math.ceil(READING_PHASE_SECONDS - elapsed);
-                                document.getElementById('reading-phase-timer').textContent = left;
-                            } else {
-                                clearInterval(STATE.readingPhaseTimer);
-                                endReadingPhase();
-                            }
-                        };
-                        tick();
-                        STATE.readingPhaseTimer = setInterval(tick, 250);
-                    } else {
-                        document.getElementById('reading-phase-timer').textContent = STATE.readingPhaseTimeLeft;
-                        STATE.readingPhaseTimer = setInterval(() => {
-                            STATE.readingPhaseTimeLeft--;
-                            document.getElementById('reading-phase-timer').textContent = STATE.readingPhaseTimeLeft;
-                            if (STATE.readingPhaseTimeLeft <= 0) {
-                                clearInterval(STATE.readingPhaseTimer);
-                                endReadingPhase();
-                            }
-                        }, 1000);
-                    }
+                    const tick = () => {
+                        // Dihitung dari STATE.questionStartAt (acuan waktu bersama), bukan dari
+                        // kapan tick pertama jalan di device ini -> semua peserta room berakhir
+                        // di titik waktu absolut yang sama, walau mulai "melihat" soalnya beda2.
+                        const elapsed = (Date.now() - STATE.questionStartAt) / 1000;
+                        const left = Math.max(0, Math.ceil(READING_PHASE_SECONDS - elapsed));
+                        STATE.readingPhaseTimeLeft = left;
+                        document.getElementById('reading-phase-timer').textContent = left;
+                        if (left <= 0) {
+                            clearInterval(STATE.readingPhaseTimer);
+                            endReadingPhase();
+                        }
+                    };
+                    tick();
+                    STATE.readingPhaseTimer = setInterval(tick, 250);
                 }
 
                 function endReadingPhase() {
+                    if (!STATE.readingPhaseActive) return; // cegah dipanggil dobel
                     STATE.readingPhaseActive = false;
                     document.getElementById('reading-phase-indicator').classList.remove('active');
                     enableAllOptionsForAnswering();
@@ -2603,33 +2592,18 @@
 
                 function startTimer(soal) {
                     clearInterval(STATE.timer);
-                    if (STATE.mode === 'room') {
-                        // Sama seperti fase membaca: hitung sisa waktu jawab dari titik waktu bersama
-                        // (qStartedAt + durasi baca), supaya timer semua user tetap sinkron walau update
-                        // Firestore-nya sampai lebih lambat di sebagian device.
-                        const answerStart = STATE.qStartedAt + READING_PHASE_SECONDS * 1000;
-                        const tick = () => {
-                            const elapsed = (Date.now() - answerStart) / 1000;
-                            const left = Math.max(0, STATE.maxTime - elapsed);
-                            STATE.timeLeft = Math.ceil(left);
-                            updateTimerUI(STATE.timeLeft);
-                            if (left <= 0) {
-                                clearInterval(STATE.timer);
-                                if (!STATE.answered) timeUp(soal);
-                            }
-                        };
-                        tick();
-                        STATE.timer = setInterval(tick, 250);
-                    } else {
-                        STATE.timeLeft = STATE.maxTime;
-                        updateTimerUI(STATE.maxTime);
-                        STATE.timer = setInterval(() => {
-                            STATE.timeLeft--;
-                            updateTimerUI(STATE.timeLeft);
-                            if (STATE.timeLeft <= 0) { clearInterval(STATE.timer); if (!STATE.answered) timeUp(
-                                soal); }
-                        }, 1000);
-                    }
+                    const tick = () => {
+                        const elapsed = (Date.now() - STATE.questionStartAt) / 1000 - READING_PHASE_SECONDS;
+                        const left = Math.max(0, Math.ceil(STATE.maxTime - elapsed));
+                        STATE.timeLeft = left;
+                        updateTimerUI(left);
+                        if (left <= 0) {
+                            clearInterval(STATE.timer);
+                            if (!STATE.answered) timeUp(soal);
+                        }
+                    };
+                    tick();
+                    STATE.timer = setInterval(tick, 250);
                 }
 
                 function updateTimerUI(t) {
@@ -3309,7 +3283,6 @@
                             STATE.soalGame = room.state.soalGame;
                             STATE.gameActive = true;
                             STATE.idx = 0;
-                            STATE.qStartedAt = room.qStartedAt || Date.now();
                             STATE.totalCorrect = 0;
                             STATE.totalWrong = 0;
                             STATE.mode = 'room';
@@ -3328,7 +3301,7 @@
                             document.getElementById('screen-game').classList.add('active');
                             startAnswersPolling();
                             renderScoreBoard();
-                            loadQuestion();
+                            loadQuestion(room.questionStartAt);
                         }
                         if (room.status === 'finished' && STATE.gameActive) {
                             endGame();
@@ -3336,8 +3309,7 @@
                         }
                         if (!STATE.isHost && STATE.gameActive && room.currentQIdx !== undefined) {
                             if (room.currentQIdx > STATE.idx) { STATE.idx = room.currentQIdx;
-                                STATE.qStartedAt = room.qStartedAt || Date.now();
-                                loadQuestion(); } else if (room.currentQIdx === -2) endGame();
+                                loadQuestion(room.questionStartAt); } else if (room.currentQIdx === -2) endGame();
                         }
                         if (room.answers && STATE.gameActive) {
                             let changed = false;
@@ -3393,14 +3365,14 @@
                         fbPatch(`/rooms/${STATE.roomCode}/players/${id}`, { score: 0 })
                     );
                     await Promise.all(scoreResetPromises);
-                    STATE.qStartedAt = Date.now();
+                    const startAt = Date.now();
                     await fbPatch(`/rooms/${STATE.roomCode}`, { status: 'playing', state: { soalGame: shuffled },
-                        currentQIdx: 0, buzzer: null, answers: null, qStartedAt: STATE.qStartedAt });
+                        currentQIdx: 0, buzzer: null, answers: null, questionStartAt: startAt });
                     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                     document.getElementById('screen-game').classList.add('active');
                     startAnswersPolling();
                     renderScoreBoard();
-                    loadQuestion(true);
+                    loadQuestion(startAt);
                 }
 
                 function renderLobbyPlayers() {
