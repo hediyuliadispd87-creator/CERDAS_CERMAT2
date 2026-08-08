@@ -1562,6 +1562,271 @@
             min-width: 160px
         }
 
+        /* ===================== ROUND SYSTEM ===================== */
+        .round-badge {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 2px;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, .15);
+            color: var(--dim);
+            text-transform: uppercase;
+            white-space: nowrap
+        }
+
+        .round-badge.r1 {
+            color: var(--blue);
+            border-color: rgba(0, 180, 255, .4);
+            background: rgba(0, 180, 255, .06)
+        }
+
+        .round-badge.r2 {
+            color: var(--red);
+            border-color: rgba(255, 45, 85, .4);
+            background: rgba(255, 45, 85, .06)
+        }
+
+        .round-badge.r3 {
+            color: var(--purple);
+            border-color: rgba(191, 95, 255, .4);
+            background: rgba(191, 95, 255, .06)
+        }
+
+        #round-intro-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 45000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            opacity: 0;
+            background: radial-gradient(ellipse at center, rgba(0, 0, 0, .92) 0%, rgba(0, 0, 0, .98) 70%);
+            transition: opacity .25s ease
+        }
+
+        #round-intro-overlay.show {
+            opacity: 1;
+            pointer-events: auto
+        }
+
+        .ri-content {
+            text-align: center;
+            transform: scale(3) rotate(-8deg);
+            opacity: 0;
+            filter: blur(4px)
+        }
+
+        #round-intro-overlay.show .ri-content {
+            animation: riPunchIn .55s cubic-bezier(.15, .8, .3, 1.2) forwards, riShake .35s ease .5s
+        }
+
+        @keyframes riPunchIn {
+            0% {
+                transform: scale(3) rotate(-8deg);
+                opacity: 0;
+                filter: blur(6px)
+            }
+            60% {
+                transform: scale(.92) rotate(2deg);
+                opacity: 1;
+                filter: blur(0)
+            }
+            100% {
+                transform: scale(1) rotate(0);
+                opacity: 1;
+                filter: blur(0)
+            }
+        }
+
+        @keyframes riShake {
+            0%,
+            100% {
+                transform: translateX(0) scale(1)
+            }
+            25% {
+                transform: translateX(-6px) scale(1.02)
+            }
+            50% {
+                transform: translateX(6px) scale(1.02)
+            }
+            75% {
+                transform: translateX(-3px) scale(1.01)
+            }
+        }
+
+        .ri-eyebrow {
+            font-family: var(--font-mono);
+            font-size: clamp(12px, 2.5vw, 16px);
+            letter-spacing: 6px;
+            color: var(--dim);
+            margin-bottom: 6px;
+            text-transform: uppercase
+        }
+
+        .ri-title {
+            font-family: var(--font-head);
+            font-size: clamp(56px, 16vw, 140px);
+            letter-spacing: 10px;
+            line-height: .9;
+            text-shadow: 0 0 50px currentColor, 0 0 120px currentColor
+        }
+
+        .ri-sub {
+            font-family: var(--font-head);
+            font-size: clamp(20px, 5vw, 34px);
+            letter-spacing: 4px;
+            margin-top: 14px;
+            text-shadow: 0 0 20px currentColor
+        }
+
+        .ri-desc {
+            font-family: var(--font-mono);
+            font-size: clamp(11px, 2vw, 13px);
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, .55);
+            margin-top: 16px;
+            max-width: 480px;
+            padding: 0 20px;
+            line-height: 1.7
+        }
+
+        #round-intro-overlay.round-1 .ri-title,
+        #round-intro-overlay.round-1 .ri-sub {
+            color: var(--blue)
+        }
+
+        #round-intro-overlay.round-2 .ri-title,
+        #round-intro-overlay.round-2 .ri-sub {
+            color: var(--red)
+        }
+
+        #round-intro-overlay.round-3 .ri-title,
+        #round-intro-overlay.round-3 .ri-sub {
+            color: var(--purple)
+        }
+
+        /* ---- Round 3: Berani (risk-points) UI ---- */
+        .bet-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px
+        }
+
+        .bet-card {
+            background: var(--panel);
+            border: 2px solid rgba(255, 255, 255, .1);
+            padding: 14px 16px;
+            transition: all .2s;
+            position: relative
+        }
+
+        .bet-card.selected {
+            border-color: var(--purple);
+            background: rgba(191, 95, 255, .07)
+        }
+
+        .bet-card.locked {
+            opacity: .55
+        }
+
+        .bet-card.correct {
+            border-color: var(--green);
+            background: rgba(0, 232, 122, .12)
+        }
+
+        .bet-card.wrong {
+            border-color: var(--red);
+            background: rgba(255, 45, 85, .1)
+        }
+
+        .bet-card-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px
+        }
+
+        .bet-card-top .opt-badge {
+            font-family: var(--font-head);
+            font-size: 20px;
+            color: var(--purple);
+            width: 28px;
+            flex-shrink: 0
+        }
+
+        .bet-card-text {
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--txt)
+        }
+
+        .bet-input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .bet-input {
+            flex: 1;
+            background: #0a0b1a;
+            border: 1px solid rgba(255, 255, 255, .15);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 15px;
+            padding: 8px 10px;
+            width: 100%;
+            outline: none
+        }
+
+        .bet-input:focus {
+            border-color: var(--purple)
+        }
+
+        .bet-input:disabled {
+            opacity: .5;
+            cursor: not-allowed
+        }
+
+        .bet-pasang-btn {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            background: var(--purple);
+            color: #fff;
+            border: none;
+            padding: 8px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+            text-transform: uppercase
+        }
+
+        .bet-pasang-btn:disabled {
+            opacity: .4;
+            cursor: not-allowed
+        }
+
+        .bet-info-bar {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: var(--purple);
+            text-align: center;
+            margin-bottom: 14px;
+            padding: 10px;
+            border: 1px solid rgba(191, 95, 255, .3);
+            background: rgba(191, 95, 255, .06)
+        }
+
+        .bet-result-tag {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            margin-top: 8px;
+            color: var(--dim)
+        }
+
         #room-correct-popup {
             position: fixed;
             inset: 0;
@@ -1977,12 +2242,17 @@
                         <div class="timer-num" id="timerNum">20</div>
                     </div>
                     <div class="score-board" id="score-board"></div>
-                    <div class="q-num" id="q-num">SOAL 1/10</div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                        <div class="round-badge" id="round-badge">RONDE 1</div>
+                        <div class="q-num" id="q-num">SOAL 1/10</div>
+                    </div>
                 </div>
                 <div id="reading-phase-indicator"><div id="reading-phase-text">📖 BACA SOAL - TOMBOL TERKUNCI</div><div id="reading-phase-timer">15</div></div>
                 <div id="ai-thinking" class="ai-bubble" style="display:none">🤖 AI sedang berpikir... <div class="ai-dots"><span></span><span></span><span></span></div></div>
                 <div class="question-card"><div class="q-text" id="q-text">Memuat soal...</div></div>
+                <div id="bet-info-bar" class="bet-info-bar" style="display:none"></div>
                 <div class="options-grid" id="options-grid"></div>
+                <div class="bet-grid" id="bet-grid" style="display:none"></div>
                 <div id="room-participants-section" style="display:none">
                     <div class="room-participants">
                         <div class="participants-summary">
@@ -2048,6 +2318,15 @@
             <div class="drama-title" id="drama-title">BENAR!</div>
             <div class="drama-sub" id="drama-sub">+100 POIN</div>
             <div class="drama-pts" id="drama-pts"></div>
+        </div>
+    </div>
+
+    <div id="round-intro-overlay">
+        <div class="ri-content">
+            <div class="ri-eyebrow" id="ri-eyebrow">RONDE DIMULAI</div>
+            <div class="ri-title" id="ri-title">RONDE 1</div>
+            <div class="ri-sub" id="ri-sub">BERSAMA MENJAWAB</div>
+            <div class="ri-desc" id="ri-desc">Semua peserta menjawab, tunggu waktu habis, benar dapat poin.</div>
         </div>
     </div>
 
@@ -2160,7 +2439,68 @@
                     readingPhaseTimeLeft: 15,
                     questionStartAt: 0,
                     participantsExpanded: false,
+                    round: 0,
+                    roundCounts: [0, 0, 0],
+                    betChoice: null,
+                    betStake: 0,
+                    betLocked: false,
                 };
+
+                const ROUND_META = {
+                    1: { name: 'RONDE 1', sub: 'BERSAMA MENJAWAB', cls: 'round-1',
+                        desc: 'Semua peserta menjawab, tunggu waktu habis, benar dapat poin.' },
+                    2: { name: 'RONDE 2', sub: 'SIAPA CEPAT DIA DAPAT', cls: 'round-2',
+                        desc: 'Tanpa waktu membaca! Langsung jawab — yang tercepat & benar mengunci soal, yang lain tidak bisa menjawab lagi.' },
+                    3: { name: 'RONDE 3', sub: 'SIAPA BERANI DIA DAPAT', cls: 'round-3',
+                        desc: 'Pilih 1 jawaban dan ambil risiko poin. Maksimal 80% poinmu. Benar = poin bertambah, salah = poin berkurang.' },
+                };
+
+                // Ronde 1 & 2 & 3 dibagi seproporsional mungkin dari total soal.
+                // 1 soal -> hanya ronde 1. 2 soal -> ronde 1 & 2. 3+ soal -> dibagi rata ke 3 ronde.
+                function computeRoundCounts(total) {
+                    if (total <= 0) return [0, 0, 0];
+                    if (total === 1) return [1, 0, 0];
+                    if (total === 2) return [1, 1, 0];
+                    const base = Math.floor(total / 3);
+                    let rem = total - base * 3;
+                    const counts = [base, base, base];
+                    for (let i = 0; i < rem; i++) counts[i]++;
+                    return counts;
+                }
+
+                function getRoundForIdx(idx) {
+                    const [c1, c2] = STATE.roundCounts;
+                    if (idx < c1) return 1;
+                    if (idx < c1 + c2) return 2;
+                    return 3;
+                }
+
+                let roundIntroTimer = null;
+
+                function playRoundIntro(round) {
+                    const meta = ROUND_META[round];
+                    if (!meta) return;
+                    const overlay = document.getElementById('round-intro-overlay');
+                    overlay.className = meta.cls;
+                    document.getElementById('ri-title').textContent = meta.name;
+                    document.getElementById('ri-sub').textContent = meta.sub;
+                    document.getElementById('ri-desc').textContent = meta.desc;
+                    playSound('timeout');
+                    clearTimeout(roundIntroTimer);
+                    // force reflow so re-triggering the animation works every time
+                    void overlay.offsetWidth;
+                    overlay.classList.add('show');
+                    updateRoundBadge(round);
+                    roundIntroTimer = setTimeout(() => { overlay.classList.remove('show'); }, 2000);
+                }
+
+                function updateRoundBadge(round) {
+                    const meta = ROUND_META[round];
+                    const badge = document.getElementById('round-badge');
+                    if (!badge || !meta) return;
+                    badge.textContent = `${meta.name} · ${meta.sub}`;
+                    badge.className = 'round-badge r' + round;
+                }
 
                 const DEMO_SOAL = [
                     { id: 1, soal: "Ibukota Indonesia adalah …", opt_a: "Bandung", opt_b: "Surabaya", opt_c: "Jakarta", opt_d: "Medan",
@@ -2499,6 +2839,8 @@
                     const shuffled = [...STATE.soalAll].sort(() => Math.random() - .5);
                     STATE.soalGame = shuffled.slice(0, Math.min(jumlah, shuffled.length));
                     STATE.idx = 0;
+                    STATE.round = 0;
+                    STATE.roundCounts = computeRoundCounts(STATE.soalGame.length);
                     STATE.totalCorrect = 0;
                     STATE.totalWrong = 0;
                     STATE.scores = { p1: 0 };
@@ -2534,8 +2876,41 @@
                     STATE.roomAnsweredUsers = {};
                     STATE.roomQuestionWon = false;
                     STATE.roomWinnerId = null;
+                    STATE.betChoice = null;
+                    STATE.betStake = 0;
+                    STATE.betLocked = false;
+
+                    if (!STATE.roundCounts || (STATE.roundCounts[0] + STATE.roundCounts[1] + STATE.roundCounts[2]) === 0) {
+                        STATE.roundCounts = computeRoundCounts(STATE.soalGame.length);
+                    }
+                    const newRound = getRoundForIdx(STATE.idx);
+                    const roundChanged = newRound !== STATE.round;
+                    STATE.round = newRound;
+                    updateRoundBadge(newRound);
+                    if (roundChanged) playRoundIntro(newRound);
+
                     document.getElementById('q-num').textContent = `SOAL ${STATE.idx+1}/${STATE.soalGame.length}`;
                     document.getElementById('q-text').textContent = soal.soal;
+
+                    if (newRound === 3) {
+                        renderBetOptions(soal);
+                    } else {
+                        renderNormalOptions(soal);
+                    }
+
+                    document.getElementById('ai-thinking').style.display = 'none';
+                    startReadingPhase();
+                    if (STATE.mode === 'ai') scheduleAI(soal);
+                    if (STATE.mode === 'room') {
+                        renderRoomParticipants();
+                        renderScoreBoard();
+                    }
+                }
+
+                function renderNormalOptions(soal) {
+                    document.getElementById('options-grid').style.display = 'grid';
+                    document.getElementById('bet-grid').style.display = 'none';
+                    document.getElementById('bet-info-bar').style.display = 'none';
                     const grid = document.getElementById('options-grid');
                     grid.innerHTML = '';
                     const opts = [{ k: 'A', v: soal.opt_a }, { k: 'B', v: soal.opt_b }, { k: 'C', v: soal.opt_c }, { k: 'D',
@@ -2548,18 +2923,81 @@
                         btn.onclick = () => answer(o.k, soal);
                         grid.appendChild(btn);
                     });
-                    document.getElementById('ai-thinking').style.display = 'none';
-                    startReadingPhase();
-                    if (STATE.mode === 'ai') scheduleAI(soal);
-                    if (STATE.mode === 'room') {
-                        renderRoomParticipants();
-                        renderScoreBoard();
-                    }
                 }
 
-                const READING_PHASE_SECONDS = 15;
+                function currentBetMax() {
+                    const score = STATE.scores[STATE.myId] || 0;
+                    return score > 0 ? Math.max(1, Math.floor(score * 0.8)) : 50;
+                }
+
+                function renderBetOptions(soal) {
+                    document.getElementById('options-grid').style.display = 'none';
+                    document.getElementById('bet-grid').style.display = 'grid';
+                    const infoBar = document.getElementById('bet-info-bar');
+                    infoBar.style.display = 'block';
+                    const max = currentBetMax();
+                    const score = STATE.scores[STATE.myId] || 0;
+                    infoBar.textContent = score > 0 ?
+                        `💰 POINMU: ${score} · MAKS RISIKO: ${max} POIN (80%)` :
+                        `💰 POINMU: 0 · MODAL AWAL: ${max} POIN`;
+                    const grid = document.getElementById('bet-grid');
+                    grid.innerHTML = '';
+                    const opts = [{ k: 'A', v: soal.opt_a }, { k: 'B', v: soal.opt_b }, { k: 'C', v: soal.opt_c }, { k: 'D',
+                        v: soal.opt_d }];
+                    opts.forEach(o => {
+                        const card = document.createElement('div');
+                        card.className = 'bet-card';
+                        card.id = 'bet-' + o.k;
+                        card.innerHTML = `
+                            <div class="bet-card-top"><span class="opt-badge">${o.k}</span><span class="bet-card-text">${o.v}</span></div>
+                            <div class="bet-input-row">
+                                <input type="number" class="bet-input" id="bet-input-${o.k}" min="0" max="${max}" placeholder="0 poin" />
+                                <button class="bet-pasang-btn" id="bet-btn-${o.k}" onclick="submitBet('${o.k}')">KUNCI</button>
+                            </div>`;
+                        grid.appendChild(card);
+                        const input = card.querySelector('.bet-input');
+                        input.addEventListener('input', () => onBetInput(o.k));
+                    });
+                }
+
+                function onBetInput(letter) {
+                    const max = currentBetMax();
+                    const input = document.getElementById('bet-input-' + letter);
+                    let val = parseInt(input.value) || 0;
+                    if (val < 0) val = 0;
+                    if (val > max) val = max;
+                    input.value = val || '';
+                    ['A', 'B', 'C', 'D'].forEach(k => {
+                        const card = document.getElementById('bet-' + k);
+                        const otherInput = document.getElementById('bet-input-' + k);
+                        if (k === letter) {
+                            card.classList.toggle('selected', val > 0);
+                        } else if (val > 0) {
+                            otherInput.value = '';
+                            otherInput.disabled = true;
+                            card.classList.remove('selected');
+                        } else {
+                            otherInput.disabled = false;
+                        }
+                    });
+                }
+
+                const READING_PHASE_SECONDS_DEFAULT = 15;
+
+                function currentReadingSeconds() {
+                    // Ronde 2 (siapa cepat dia dapat): tanpa waktu membaca sama sekali.
+                    return STATE.round === 2 ? 0 : READING_PHASE_SECONDS_DEFAULT;
+                }
 
                 function startReadingPhase() {
+                    const secs = currentReadingSeconds();
+                    if (secs <= 0) {
+                        STATE.readingPhaseActive = false;
+                        document.getElementById('reading-phase-indicator').classList.remove('active');
+                        enableAllOptionsForAnswering();
+                        startTimer(STATE.soalGame[STATE.idx]);
+                        return;
+                    }
                     STATE.readingPhaseActive = true;
                     document.getElementById('reading-phase-indicator').classList.add('active');
                     disableAllOptionsForReading();
@@ -2569,7 +3007,7 @@
                         // kapan tick pertama jalan di device ini -> semua peserta room berakhir
                         // di titik waktu absolut yang sama, walau mulai "melihat" soalnya beda2.
                         const elapsed = (Date.now() - STATE.questionStartAt) / 1000;
-                        const left = Math.max(0, Math.ceil(READING_PHASE_SECONDS - elapsed));
+                        const left = Math.max(0, Math.ceil(secs - elapsed));
                         STATE.readingPhaseTimeLeft = left;
                         document.getElementById('reading-phase-timer').textContent = left;
                         if (left <= 0) {
@@ -2592,8 +3030,9 @@
 
                 function startTimer(soal) {
                     clearInterval(STATE.timer);
+                    const readSecs = currentReadingSeconds();
                     const tick = () => {
-                        const elapsed = (Date.now() - STATE.questionStartAt) / 1000 - READING_PHASE_SECONDS;
+                        const elapsed = (Date.now() - STATE.questionStartAt) / 1000 - readSecs;
                         const left = Math.max(0, Math.ceil(STATE.maxTime - elapsed));
                         STATE.timeLeft = left;
                         updateTimerUI(left);
@@ -2619,18 +3058,24 @@
                     num.style.color = pct > 0.5 ? 'var(--green)' : pct > 0.25 ? 'var(--accent)' : 'var(--red)';
                 }
 
-                function disableAllOptionsForReading() { document.querySelectorAll('.opt-btn').forEach(b => { b.disabled =
-                        true;
-                    b.classList.add('reading-disabled'); }); }
+                function disableAllOptionsForReading() {
+                    document.querySelectorAll('.opt-btn').forEach(b => { b.disabled = true;
+                        b.classList.add('reading-disabled'); });
+                    document.querySelectorAll('.bet-input, .bet-pasang-btn').forEach(b => b.disabled = true);
+                }
 
-                function enableAllOptionsForAnswering() { document.querySelectorAll('.opt-btn').forEach(b => { b.disabled =
-                        false;
-                    b.classList.remove('reading-disabled'); }); }
+                function enableAllOptionsForAnswering() {
+                    document.querySelectorAll('.opt-btn').forEach(b => { b.disabled = false;
+                        b.classList.remove('reading-disabled'); });
+                    if (!STATE.betLocked) document.querySelectorAll('.bet-input, .bet-pasang-btn').forEach(b => b
+                        .disabled = false);
+                }
 
                 async function answer(choice, soal) {
                     if (STATE.readingPhaseActive) { toast('⏳ Masih fase membaca!', 1500, 'toast-timeout'); return; }
                     if (STATE.answered) return;
-                    if (STATE.mode === 'room' && STATE.roomQuestionWon) { toast('⚡ Sudah ada yang benar!', 1500); return; }
+                    if (STATE.mode === 'room' && STATE.round === 2 && STATE.roomQuestionWon) { toast(
+                        '⚡ Sudah ada yang benar!', 1500); return; }
                     STATE.answered = true;
                     clearInterval(STATE.timer);
                     const isCorrect = choice === (soal.kunci || '').toUpperCase();
@@ -2652,17 +3097,62 @@
                         try { await fbPatch(`/rooms/${STATE.roomCode}/answers`, { [STATE.myId]: { pid: STATE.myId,
                                     nama: STATE.nama, qIdx: STATE.idx, isCorrect, pts, ts: Date.now() } }); } catch (
                         e) {}
-                        if (isCorrect) {
+                        // Kunci soal hanya di Ronde 2 (siapa cepat dia dapat) — di Ronde 1 semua
+                        // peserta tetap boleh menjawab sampai waktu habis.
+                        if (isCorrect && STATE.round === 2) {
                             try { await fbPatch(`/rooms/${STATE.roomCode}`, { buzzer: { pid: STATE.myId, nama: STATE
                                         .nama, qIdx: STATE.idx, isCorrect: true, pts, ts: Date.now() } }); } catch (
                             e) {}
                             await broadcastScore();
                         } else {
                             await broadcastScore();
-                            toast('❌ Jawaban salah — +0 poin', 2500, 'toast-wrong');
+                            if (!isCorrect) toast('❌ Jawaban salah — +0 poin', 2500, 'toast-wrong');
                         }
                     } else {
                         showDrama(isCorrect, pts, timeBonus, speedBonus);
+                        renderScoreBoard();
+                        setTimeout(() => { hideDrama();
+                            nextQuestion(); }, 2200);
+                    }
+                }
+
+                async function submitBet(letter) {
+                    if (STATE.readingPhaseActive) { toast('⏳ Masih fase membaca!', 1500, 'toast-timeout'); return; }
+                    if (STATE.answered || STATE.betLocked) return;
+                    const input = document.getElementById('bet-input-' + letter);
+                    let stake = parseInt(input.value) || 0;
+                    const max = currentBetMax();
+                    if (stake <= 0) { toast('⚠ Isi dulu poin risikomu!', 1800); return; }
+                    if (stake > max) stake = max;
+                    const soal = STATE.soalGame[STATE.idx];
+                    STATE.answered = true;
+                    STATE.betLocked = true;
+                    STATE.betChoice = letter;
+                    STATE.betStake = stake;
+                    clearInterval(STATE.timer);
+                    const isCorrect = letter === (soal.kunci || '').toUpperCase();
+                    const pts = isCorrect ? stake : -stake;
+                    STATE.scores[STATE.myId] = Math.max(0, (STATE.scores[STATE.myId] || 0) + pts);
+                    if (isCorrect) STATE.totalCorrect++;
+                    else STATE.totalWrong++;
+                    const card = document.getElementById('bet-' + letter);
+                    if (card) card.classList.add(isCorrect ? 'correct' : 'wrong');
+                    disableOpts();
+                    if (STATE.gasUrl && STATE.mode !== 'room') verifyWithGASBackground(soal.id, letter, isCorrect)
+                        .catch(() => {});
+                    if (STATE.mode === 'room') {
+                        STATE.roomAnsweredUsers[STATE.myId] = { nama: STATE.nama, isCorrect };
+                        renderRoomParticipants();
+                        try { await fbPatch(`/rooms/${STATE.roomCode}/answers`, { [STATE.myId]: { pid: STATE.myId,
+                                    nama: STATE.nama, qIdx: STATE.idx, isCorrect, pts, ts: Date.now() } }); } catch (
+                        e) {}
+                        await broadcastScore();
+                        toast(isCorrect ? `🎯 Tepat! +${stake} poin` : `💸 Meleset! -${stake} poin`,
+                            2500, isCorrect ? '' : 'toast-wrong');
+                    } else {
+                        showDrama(isCorrect, Math.abs(pts), 0, 0);
+                        const sub = document.getElementById('drama-sub');
+                        if (sub) sub.textContent = isCorrect ? `+${stake} POIN (RISIKO)` : `-${stake} POIN (RISIKO)`;
                         renderScoreBoard();
                         setTimeout(() => { hideDrama();
                             nextQuestion(); }, 2200);
@@ -2681,7 +3171,8 @@
                                 qIdx: STATE.idx, isCorrect: false, pts: 0, ts: Date.now(), timeout: true } }).catch(
                         () => {});
                         broadcastScore().catch(() => {});
-                        toast('⏰ Waktu habis! +0 poin', 2500, 'toast-timeout');
+                        toast(STATE.round === 3 ? '⏰ Waktu habis! Tidak mengambil risiko poin' :
+                            '⏰ Waktu habis! +0 poin', 2500, 'toast-timeout');
                     } else {
                         showDramaTimeout();
                         setTimeout(() => { hideDrama();
@@ -2689,7 +3180,10 @@
                     }
                 }
 
-                function disableOpts() { document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true); }
+                function disableOpts() {
+                    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+                    document.querySelectorAll('.bet-input, .bet-pasang-btn').forEach(b => b.disabled = true);
+                }
 
                 function nextQuestion() { STATE.idx++;
                     loadQuestion(); }
@@ -3283,6 +3777,8 @@
                             STATE.soalGame = room.state.soalGame;
                             STATE.gameActive = true;
                             STATE.idx = 0;
+                            STATE.round = 0;
+                            STATE.roundCounts = computeRoundCounts(STATE.soalGame.length);
                             STATE.totalCorrect = 0;
                             STATE.totalWrong = 0;
                             STATE.mode = 'room';
@@ -3323,7 +3819,7 @@
                             if (changed) { renderRoomParticipants();
                                 renderScoreBoard(); }
                         }
-                        if (room.buzzer && STATE.gameActive) {
+                        if (room.buzzer && STATE.gameActive && STATE.round === 2) {
                             const bz = room.buzzer;
                             if (bz.qIdx === STATE.idx && bz.qIdx !== lastProcessedQIdx && bz.isCorrect) {
                                 lastProcessedQIdx = bz.qIdx;
@@ -3357,6 +3853,8 @@
                     const shuffled = [...STATE.soalAll].sort(() => Math.random() - .5).slice(0, STATE.roomJumlahSoal);
                     STATE.soalGame = shuffled;
                     STATE.idx = 0;
+                    STATE.round = 0;
+                    STATE.roundCounts = computeRoundCounts(STATE.soalGame.length);
                     STATE.totalCorrect = 0;
                     STATE.totalWrong = 0;
                     STATE.gameActive = true;
@@ -3490,6 +3988,7 @@
                     } catch (e) {}
                 }
 
+                window.submitBet = submitBet;
                 window.loadLeaderboard = loadLeaderboard;
                 window.showScreen = showScreen;
                 window.goMode = goMode;
