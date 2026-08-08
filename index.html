@@ -2932,6 +2932,7 @@
                 }
 
                 async function startGame() {
+                    unlockAudio();
                     const nama = document.getElementById('in-nama').value.trim();
                     const kelas = document.getElementById('in-kelas').value.trim();
                     if (!nama) { toast('⚠ Masukkan nama kamu!'); return; }
@@ -3914,6 +3915,7 @@
                         lobbyPollInterval = null; } }
 
                 async function createRoom() {
+                    unlockAudio();
                     const nama = document.getElementById('in-nama-room').value.trim();
                     const kelas = document.getElementById('in-kelas-room').value.trim();
                     const mapel = document.getElementById('in-mapel-room').value;
@@ -3943,6 +3945,7 @@
                 }
 
                 async function joinRoom() {
+                    unlockAudio();
                     const code = document.getElementById('in-roomcode').value.trim().toUpperCase();
                     const nama = document.getElementById('in-nama-join').value.trim();
                     const kelas = document.getElementById('in-kelas-join').value.trim();
@@ -4067,6 +4070,7 @@
                 }
 
                 async function startRoomGame() {
+                    unlockAudio();
                     if (!STATE.isHost) return;
                     stopLobbyPolling();
                     STATE.diff = 'normal';
@@ -4129,6 +4133,24 @@
                 }
 
                 let audioCtx = null;
+
+                // Browser modern mengunci AudioContext sampai ada gestur klik dari user.
+                // Supaya suara detak jantung pasti terdengar, context ini di-"unlock"
+                // langsung saat tombol MULAI ditekan (gestur klik yang jelas & sinkron),
+                // bukan menunggu klik acak lain di halaman.
+                function unlockAudio() {
+                    try {
+                        if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                        if (audioCtx.state === 'suspended') audioCtx.resume();
+                        // Mainkan buffer kosong sekali supaya benar-benar ter-unlock di browser
+                        // yang ketat (mis. Safari/iOS).
+                        const buffer = audioCtx.createBuffer(1, 1, 22050);
+                        const src = audioCtx.createBufferSource();
+                        src.buffer = buffer;
+                        src.connect(audioCtx.destination);
+                        src.start(0);
+                    } catch (e) {}
+                }
 
                 function initAudio() { document.addEventListener('click', () => { if (!audioCtx) audioCtx = new(window
                             .AudioContext || window.webkitAudioContext)(); }, { once: true }); }
