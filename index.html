@@ -1252,6 +1252,112 @@
             }
         }
 
+        #heartbeat-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            pointer-events: none;
+            opacity: 0;
+            background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 45, 85, .55) 140%);
+            transition: opacity .4s ease
+        }
+
+        #heartbeat-overlay.active {
+            opacity: .35
+        }
+
+        #heartbeat-overlay.beat {
+            animation: heartbeatPulse .35s ease-out
+        }
+
+        @keyframes heartbeatPulse {
+            0% {
+                opacity: .35;
+                transform: scale(1)
+            }
+            25% {
+                opacity: .85;
+                transform: scale(1.03)
+            }
+            55% {
+                opacity: .45;
+                transform: scale(1)
+            }
+            100% {
+                opacity: .35;
+                transform: scale(1)
+            }
+        }
+
+        #timerCircle.heartbeat-beat {
+            animation: heartbeatRing .35s ease-out
+        }
+
+        @keyframes heartbeatRing {
+            0% {
+                filter: drop-shadow(0 0 0 currentColor)
+            }
+            30% {
+                filter: drop-shadow(0 0 10px var(--red))
+            }
+            100% {
+                filter: drop-shadow(0 0 0 currentColor)
+            }
+        }
+
+        #thumb-pop {
+            position: fixed;
+            inset: 0;
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            opacity: 0
+        }
+
+        #thumb-pop.show {
+            opacity: 1;
+            animation: thumbPopBg .2s ease
+        }
+
+        #thumb-pop .thumb-pop-icon {
+            font-size: clamp(90px, 20vw, 160px);
+            filter: drop-shadow(0 0 30px rgba(0, 0, 0, .5));
+            animation: thumbPopIcon 1s cubic-bezier(.17, .67, .35, 1.4)
+        }
+
+        @keyframes thumbPopBg {
+            from {
+                opacity: 0
+            }
+            to {
+                opacity: 1
+            }
+        }
+
+        @keyframes thumbPopIcon {
+            0% {
+                transform: scale(0) rotate(-25deg);
+                opacity: 0
+            }
+            25% {
+                transform: scale(1.3) rotate(8deg);
+                opacity: 1
+            }
+            40% {
+                transform: scale(1) rotate(0)
+            }
+            80% {
+                transform: scale(1) rotate(0);
+                opacity: 1
+            }
+            100% {
+                transform: scale(.85) rotate(0);
+                opacity: 0
+            }
+        }
+
         .ai-bubble {
             background: rgba(191, 95, 255, .1);
             border: 1px solid rgba(191, 95, 255, .3);
@@ -2321,6 +2427,12 @@
         </div>
     </div>
 
+    <div id="thumb-pop">
+        <span class="thumb-pop-icon" id="thumb-pop-icon">👍</span>
+    </div>
+
+    <div id="heartbeat-overlay"></div>
+
     <div id="round-intro-overlay">
         <div class="ri-content">
             <div class="ri-eyebrow" id="ri-eyebrow">RONDE DIMULAI</div>
@@ -2873,6 +2985,9 @@
                     STATE.questionStartAt = startAt;
                     const soal = STATE.soalGame[STATE.idx];
                     STATE.answered = false;
+                    STATE.revealed = false;
+                    STATE.pendingReveal = null;
+                    stopHeartbeat();
                     STATE.roomAnsweredUsers = {};
                     STATE.roomQuestionWon = false;
                     STATE.roomWinnerId = null;
@@ -3036,6 +3151,16 @@
                         const left = Math.max(0, Math.ceil(STATE.maxTime - elapsed));
                         STATE.timeLeft = left;
                         updateTimerUI(left);
+                        // Ronde 1 & 3 (solo/AI): kalau sudah menjawab/kunci taruhan tapi hasilnya
+                        // masih dirahasiakan, baru diungkap begitu waktu mengerjakan tersisa 1 detik.
+                        if (STATE.mode !== 'room' && (STATE.round === 1 || STATE.round === 3) &&
+                            STATE.answered && !STATE.revealed && left <= 1) {
+                            STATE.revealed = true;
+                            clearInterval(STATE.timer);
+                            if (STATE.pendingReveal) { const fn = STATE.pendingReveal;
+                                STATE.pendingReveal = null;
+                                fn(); }
+                        }
                         if (left <= 0) {
                             clearInterval(STATE.timer);
                             if (!STATE.answered) timeUp(soal);
@@ -3077,7 +3202,8 @@
                     if (STATE.mode === 'room' && STATE.round === 2 && STATE.roomQuestionWon) { toast(
                         '⚡ Sudah ada yang benar!', 1500); return; }
                     STATE.answered = true;
-                    clearInterval(STATE.timer);
+                    STATE.revealed = false;
+                    STATE.pendingReveal = null;
                     const isCorrect = choice === (soal.kunci || '').toUpperCase();
                     const timeUsed = STATE.maxTime - STATE.timeLeft;
                     const timeBonus = Math.floor(STATE.timeLeft * 5);
@@ -3086,12 +3212,13 @@
                     STATE.scores[STATE.myId] = (STATE.scores[STATE.myId] || 0) + pts;
                     if (isCorrect) STATE.totalCorrect++;
                     else STATE.totalWrong++;
-                    const btn = document.getElementById('opt-' + choice);
-                    if (btn) btn.classList.add(isCorrect ? 'correct' : 'wrong');
                     disableOpts();
                     if (STATE.gasUrl && STATE.mode !== 'room') verifyWithGASBackground(soal.id, choice, isCorrect).catch(
                     () => {});
                     if (STATE.mode === 'room') {
+                        clearInterval(STATE.timer);
+                        const btn = document.getElementById('opt-' + choice);
+                        if (btn) btn.classList.add(isCorrect ? 'correct' : 'wrong');
                         STATE.roomAnsweredUsers[STATE.myId] = { nama: STATE.nama, isCorrect };
                         renderRoomParticipants();
                         try { await fbPatch(`/rooms/${STATE.roomCode}/answers`, { [STATE.myId]: { pid: STATE.myId,
@@ -3108,7 +3235,28 @@
                             await broadcastScore();
                             if (!isCorrect) toast('❌ Jawaban salah — +0 poin', 2500, 'toast-wrong');
                         }
+                    } else if (STATE.round === 1) {
+                        // Ronde 1: hasil dirahasiakan — baru diungkap saat waktu tersisa 1 detik,
+                        // biar tegang. Pemicunya ada di startTimer() (STATE.pendingReveal).
+                        startHeartbeat();
+                        STATE.pendingReveal = () => {
+                            stopHeartbeat();
+                            const btn = document.getElementById('opt-' + choice);
+                            if (btn) btn.classList.add(isCorrect ? 'correct' : 'wrong');
+                            showThumbPop(isCorrect);
+                            setTimeout(() => {
+                                hideThumbPop();
+                                showDrama(isCorrect, pts, timeBonus, speedBonus);
+                                renderScoreBoard();
+                                setTimeout(() => { hideDrama();
+                                    nextQuestion(); }, 2200);
+                            }, THUMB_POP_DELAY_MS);
+                        };
                     } else {
+                        // Ronde 2: instan seperti biasa (siapa cepat dia dapat).
+                        clearInterval(STATE.timer);
+                        const btn = document.getElementById('opt-' + choice);
+                        if (btn) btn.classList.add(isCorrect ? 'correct' : 'wrong');
                         showDrama(isCorrect, pts, timeBonus, speedBonus);
                         renderScoreBoard();
                         setTimeout(() => { hideDrama();
@@ -3129,18 +3277,20 @@
                     STATE.betLocked = true;
                     STATE.betChoice = letter;
                     STATE.betStake = stake;
-                    clearInterval(STATE.timer);
+                    STATE.revealed = false;
+                    STATE.pendingReveal = null;
                     const isCorrect = letter === (soal.kunci || '').toUpperCase();
                     const pts = isCorrect ? stake : -stake;
                     STATE.scores[STATE.myId] = Math.max(0, (STATE.scores[STATE.myId] || 0) + pts);
                     if (isCorrect) STATE.totalCorrect++;
                     else STATE.totalWrong++;
-                    const card = document.getElementById('bet-' + letter);
-                    if (card) card.classList.add(isCorrect ? 'correct' : 'wrong');
                     disableOpts();
                     if (STATE.gasUrl && STATE.mode !== 'room') verifyWithGASBackground(soal.id, letter, isCorrect)
                         .catch(() => {});
                     if (STATE.mode === 'room') {
+                        clearInterval(STATE.timer);
+                        const card = document.getElementById('bet-' + letter);
+                        if (card) card.classList.add(isCorrect ? 'correct' : 'wrong');
                         STATE.roomAnsweredUsers[STATE.myId] = { nama: STATE.nama, isCorrect };
                         renderRoomParticipants();
                         try { await fbPatch(`/rooms/${STATE.roomCode}/answers`, { [STATE.myId]: { pid: STATE.myId,
@@ -3150,12 +3300,24 @@
                         toast(isCorrect ? `🎯 Tepat! +${stake} poin` : `💸 Meleset! -${stake} poin`,
                             2500, isCorrect ? '' : 'toast-wrong');
                     } else {
-                        showDrama(isCorrect, Math.abs(pts), 0, 0);
-                        const sub = document.getElementById('drama-sub');
-                        if (sub) sub.textContent = isCorrect ? `+${stake} POIN (RISIKO)` : `-${stake} POIN (RISIKO)`;
-                        renderScoreBoard();
-                        setTimeout(() => { hideDrama();
-                            nextQuestion(); }, 2200);
+                        // Ronde 3: hasil dirahasiakan — baru diungkap saat waktu tersisa 1 detik.
+                        // Pemicunya ada di startTimer() (STATE.pendingReveal).
+                        startHeartbeat();
+                        STATE.pendingReveal = () => {
+                            stopHeartbeat();
+                            const card = document.getElementById('bet-' + letter);
+                            if (card) card.classList.add(isCorrect ? 'correct' : 'wrong');
+                            showThumbPop(isCorrect);
+                            setTimeout(() => {
+                                hideThumbPop();
+                                showDrama(isCorrect, Math.abs(pts), 0, 0);
+                                const sub = document.getElementById('drama-sub');
+                                if (sub) sub.textContent = isCorrect ? `+${stake} POIN (RISIKO)` : `-${stake} POIN (RISIKO)`;
+                                renderScoreBoard();
+                                setTimeout(() => { hideDrama();
+                                    nextQuestion(); }, 2200);
+                            }, THUMB_POP_DELAY_MS);
+                        };
                     }
                 }
 
@@ -3339,6 +3501,67 @@
                 }
 
                 function hideDrama() { document.getElementById('drama').classList.remove('show'); }
+
+                // Ronde 1 & 3: sebelum notifikasi benar/salah muncul, tampilkan dulu
+                // animasi jari jempol di tengah layar selama 1 detik sebagai jeda dramatis.
+                const THUMB_POP_DELAY_MS = 1000;
+
+                function showThumbPop(correct) {
+                    const pop = document.getElementById('thumb-pop');
+                    const icon = document.getElementById('thumb-pop-icon');
+                    icon.textContent = correct ? '👍' : '👎';
+                    // reset animasi supaya bisa diputar ulang tiap soal
+                    pop.classList.remove('show');
+                    icon.style.animation = 'none';
+                    void pop.offsetWidth; // force reflow
+                    icon.style.animation = '';
+                    pop.classList.add('show');
+                }
+
+                function hideThumbPop() { document.getElementById('thumb-pop').classList.remove('show'); }
+
+                // Efek detak jantung: makin dekat waktu habis, detaknya makin cepat —
+                // bikin momen "menunggu hasil" di Ronde 1 & 3 makin tegang.
+                function heartbeatIntervalForTime(t) {
+                    if (t <= 3) return 260;
+                    if (t <= 6) return 420;
+                    if (t <= 10) return 650;
+                    return 950;
+                }
+
+                function startHeartbeat() {
+                    stopHeartbeat();
+                    STATE.heartbeatActive = true;
+                    const overlay = document.getElementById('heartbeat-overlay');
+                    if (overlay) overlay.classList.add('active');
+                    const beat = () => {
+                        if (!STATE.heartbeatActive) return;
+                        pulseHeartbeatBeat();
+                        playHeartbeatSound();
+                        STATE.heartbeatTimer = setTimeout(beat, heartbeatIntervalForTime(STATE.timeLeft));
+                    };
+                    beat();
+                }
+
+                function stopHeartbeat() {
+                    STATE.heartbeatActive = false;
+                    clearTimeout(STATE.heartbeatTimer);
+                    const overlay = document.getElementById('heartbeat-overlay');
+                    if (overlay) overlay.classList.remove('active', 'beat');
+                    const ring = document.getElementById('timerCircle');
+                    if (ring) ring.classList.remove('heartbeat-beat');
+                }
+
+                function pulseHeartbeatBeat() {
+                    const overlay = document.getElementById('heartbeat-overlay');
+                    const ring = document.getElementById('timerCircle');
+                    if (overlay) { overlay.classList.remove('beat');
+                        void overlay.offsetWidth;
+                        overlay.classList.add('beat'); }
+                    if (ring) { ring.classList.remove('heartbeat-beat');
+                        void ring.offsetWidth;
+                        ring.classList.add('heartbeat-beat'); }
+                }
 
                 function spawnParticles(correct) {
                     const cont = document.getElementById('particles');
@@ -3966,6 +4189,29 @@
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
                     osc.start(audioCtx.currentTime);
                     osc.stop(audioCtx.currentTime + 0.5);
+                }
+
+                function playHeartbeatSound() {
+                    // Detak jantung "lub-dub": dua thump nada rendah beruntun.
+                    try {
+                        if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                        if (audioCtx.state === 'suspended') audioCtx.resume();
+                        [0, 0.14].forEach((delay, i) => {
+                            const osc = audioCtx.createOscillator(),
+                                gain = audioCtx.createGain();
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.type = 'sine';
+                            const t = audioCtx.currentTime + delay;
+                            osc.frequency.setValueAtTime(i === 0 ? 85 : 65, t);
+                            osc.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+                            gain.gain.setValueAtTime(0.001, t);
+                            gain.gain.linearRampToValueAtTime(i === 0 ? 0.55 : 0.4, t + 0.015);
+                            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+                            osc.start(t);
+                            osc.stop(t + 0.14);
+                        });
+                    } catch (e) {}
                 }
 
                 let toastTimer = null;
