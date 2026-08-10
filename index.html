@@ -2921,6 +2921,10 @@
                     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                     document.getElementById(id).classList.add('active');
                     if (id !== 'screen-lobby') stopLobbyPolling();
+                    // Kalau user pindah ke Home sementara masih tercatat di sebuah room
+                    // (misalnya klik HOME dari layar hasil room), bersihkan diri dari room itu
+                    // supaya nama tidak nyangkut di daftar pemain.
+                    if (id === 'screen-home' && STATE.roomCode) { exitCurrentRoom(); }
                 }
 
                 function goMode(mode) {
@@ -3914,6 +3918,81 @@
                 function stopLobbyPolling() { if (lobbyPollInterval) { clearInterval(lobbyPollInterval);
                         lobbyPollInterval = null; } }
 
+                // === Presence system: mendeteksi pemain yang refresh/tutup app/koneksi putus ===
+                // Firestore tidak punya fitur onDisconnect seperti Realtime Database, jadi dibuat
+                // manual: tiap pemain kirim "denyut nadi" (lastSeen) berkala, dan semua client yang
+                // masih aktif rutin membuang pemain yang denyutnya sudah lama tidak update.
+                const ROOM_HEARTBEAT_MS = 5000; // kirim lastSeen tiap 5 detik
+                const ROOM_STALE_MS = 15000; // dianggap terputus kalau tidak update > 15 detik (3x heartbeat)
+                let presenceHeartbeatInterval = null;
+                let presenceCleanupInterval = null;
+
+                function startPresenceHeartbeat() {
+                    stopPresenceHeartbeat();
+                    const beat = () => {
+                        if (!STATE.roomCode || !STATE.myId) return;
+                        fbPatch(`/rooms/${STATE.roomCode}/players/${STATE.myId}`, { lastSeen: Date.now() }).catch(() => {});
+                    };
+                    beat();
+                    presenceHeartbeatInterval = setInterval(beat, ROOM_HEARTBEAT_MS);
+                }
+
+                function stopPresenceHeartbeat() { if (presenceHeartbeatInterval) { clearInterval(presenceHeartbeatInterval);
+                        presenceHeartbeatInterval = null; } }
+
+                function startPresenceCleanup() {
+                    stopPresenceCleanup();
+                    presenceCleanupInterval = setInterval(async () => {
+                        if (!STATE.roomCode) return;
+                        try {
+                            const players = await fbGet(`/rooms/${STATE.roomCode}/players`);
+                            if (!players) return;
+                            const now = Date.now();
+                            let removedAny = false;
+                            for (const [id, p] of Object.entries(players)) {
+                                if (id === STATE.myId) continue; // jangan pernah hapus diri sendiri
+                                const last = (p && p.lastSeen) || 0;
+                                if (now - last > ROOM_STALE_MS) {
+                                    await fbDelete(`/rooms/${STATE.roomCode}/players/${id}`);
+                                    delete STATE.players[id];
+                                    delete STATE.scores[id];
+                                    delete STATE.roomAnsweredUsers[id];
+                                    removedAny = true;
+                                }
+                            }
+                            if (removedAny) {
+                                renderLobbyPlayers();
+                                if (STATE.gameActive) { renderScoreBoard();
+                                    renderRoomParticipants(); }
+                            }
+                        } catch (e) {}
+                    }, 7000);
+                }
+
+                function stopPresenceCleanup() { if (presenceCleanupInterval) { clearInterval(presenceCleanupInterval);
+                        presenceCleanupInterval = null; } }
+
+                // Keluar dari room secara bersih: hentikan semua timer/listener dan hapus data diri sendiri
+                // dari Firestore. Dipanggil baik saat user menekan "Keluar Room" maupun saat pindah ke Home.
+                async function exitCurrentRoom() {
+                    const code = STATE.roomCode;
+                    const myId = STATE.myId;
+                    const wasHost = STATE.isHost;
+                    fbUnlisten();
+                    stopLobbyPolling();
+                    stopAnswersPolling();
+                    stopPresenceHeartbeat();
+                    stopPresenceCleanup();
+                    STATE.gameActive = false;
+                    STATE.roomCode = '';
+                    if (code && myId) {
+                        try {
+                            await fbDelete(`/rooms/${code}/players/${myId}`);
+                            if (wasHost) await fbDelete(`/rooms/${code}`);
+                        } catch (e) {}
+                    }
+                }
+
                 async function createRoom() {
                     unlockAudio();
                     const nama = document.getElementById('in-nama-room').value.trim();
@@ -3937,9 +4016,8 @@
                     STATE.gameActive = false;
                     STATE.roomJumlahSoal = jumlah;
                     await fbSet(`/rooms/${STATE.roomCode}`, { host: STATE.myId, status: 'lobby', players: { [STATE
-                                .myId]: { nama, kelas: kelas || '-', score: 0 }
+                                .myId]: { nama, kelas: kelas || '-', score: 0, lastSeen: Date.now() }
                             }, state: null, jumlahSoal: jumlah, currentQIdx: -1, answers: null, buzzer: null });
-                    window.addEventListener('beforeunload', () => fbDelete(`/rooms/${STATE.roomCode}`));
                     enterLobby();
                     listenRoom();
                 }
@@ -3962,7 +4040,7 @@
                     STATE.scores = {};
                     STATE.gameActive = false;
                     STATE.roomJumlahSoal = roomData.jumlahSoal || 10;
-                    await fbPatch(`/rooms/${code}/players`, { [STATE.myId]: { nama, kelas: kelas || '-', score: 0 } });
+                    await fbPatch(`/rooms/${code}/players`, { [STATE.myId]: { nama, kelas: kelas || '-', score: 0, lastSeen: Date.now() } });
                     enterLobby();
                     listenRoom();
                 }
@@ -3976,6 +4054,8 @@
                     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                     document.getElementById('screen-lobby').classList.add('active');
                     startLobbyPolling();
+                    startPresenceHeartbeat();
+                    startPresenceCleanup();
                 }
 
                 function listenRoom() {
@@ -3984,6 +4064,15 @@
                         if (!snap || snap.data === undefined) return;
                         const room = snap.data;
                         if (room.players) {
+                            // buang dari state lokal pemain yang sudah tidak ada di Firestore
+                            // (dihapus karena keluar room atau terdeteksi terputus)
+                            Object.keys(STATE.players).forEach(id => {
+                                if (id !== STATE.myId && !room.players[id]) {
+                                    delete STATE.players[id];
+                                    delete STATE.scores[id];
+                                    delete STATE.roomAnsweredUsers[id];
+                                }
+                            });
                             Object.entries(room.players).forEach(([id, p]) => {
                                 if (!p) return;
                                 if (!STATE.players[id]) STATE.players[id] = {};
@@ -4124,11 +4213,7 @@
                     toast(`📋 Kode ${STATE.roomCode} tersalin!`); }
 
                 async function leaveRoom() {
-                    fbUnlisten();
-                    stopLobbyPolling();
-                    try { await fbDelete(`/rooms/${STATE.roomCode}/players/${STATE.myId}`); if (STATE.isHost) await
-                            fbDelete(`/rooms/${STATE.roomCode}`); } catch (e) {}
-                    STATE.gameActive = false;
+                    await exitCurrentRoom();
                     showScreen('screen-home');
                 }
 
