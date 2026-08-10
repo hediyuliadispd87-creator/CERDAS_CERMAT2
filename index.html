@@ -3962,7 +3962,22 @@
                     STATE.scores = {};
                     STATE.gameActive = false;
                     STATE.roomJumlahSoal = roomData.jumlahSoal || 10;
+                    // Bersihkan entri lama dengan nama yang sama (mis. sisa dari sesi sebelumnya
+                    // yang keluar tanpa sempat terhapus / tab ditutup paksa), supaya nama tidak
+                    // muncul dobel di daftar peserta.
+                    if (roomData.players) {
+                        const namaKey = nama.trim().toLowerCase();
+                        const stalePids = Object.entries(roomData.players)
+                            .filter(([pid, p]) => p && (p.nama || '').trim().toLowerCase() === namaKey)
+                            .map(([pid]) => pid);
+                        for (const pid of stalePids) {
+                            await fbDelete(`/rooms/${code}/players/${pid}`);
+                            delete STATE.players[pid];
+                            delete STATE.scores[pid];
+                        }
+                    }
                     await fbPatch(`/rooms/${code}/players`, { [STATE.myId]: { nama, kelas: kelas || '-', score: 0 } });
+                    window.addEventListener('beforeunload', () => fbDelete(`/rooms/${code}/players/${STATE.myId}`));
                     enterLobby();
                     listenRoom();
                 }
