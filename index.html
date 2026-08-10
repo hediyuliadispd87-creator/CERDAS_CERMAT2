@@ -3776,6 +3776,40 @@
 
                 function genRoomCode() { return Math.random().toString(36).substr(2, 4).toUpperCase(); }
 
+                // ID pemain dibuat persisten per-device (disimpan di localStorage), bukan dibuat baru
+                // (mis. 'p_' + Date.now()) setiap kali join. Sebelumnya, tiap kali user keluar lalu
+                // join lagi ke room yang sama, ia mendapat ID baru sehingga entri lamanya di
+                // players tidak pernah tergantikan/terhapus -> namanya numpuk/dobel di daftar peserta.
+                // Dengan ID yang sama untuk device yang sama, join ulang akan menimpa (overwrite)
+                // entri lama, bukan menambah entri baru.
+                function getDeviceId() {
+                    try {
+                        let id = localStorage.getItem('ccm_device_id');
+                        if (!id) {
+                            id = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+                            localStorage.setItem('ccm_device_id', id);
+                        }
+                        return id;
+                    } catch (e) {
+                        // fallback kalau localStorage tidak tersedia (mis. mode privat ketat)
+                        return 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+                    }
+                }
+
+                // Bersihkan entri peserta "hantu" (sisa join sebelumnya) yang punya nama sama
+                // tapi ID berbeda dari ID kita saat ini -- jaga-jaga kalau localStorage sempat
+                // hilang/berganti device sehingga ID baru dibuat lagi.
+                async function cleanupDuplicatePlayers(roomCode, players, myId, nama) {
+                    if (!players) return;
+                    const namaNorm = (nama || '').trim().toLowerCase();
+                    const staleIds = Object.entries(players)
+                        .filter(([id, p]) => id !== myId && p && (p.nama || '').trim().toLowerCase() === namaNorm)
+                        .map(([id]) => id);
+                    for (const id of staleIds) {
+                        try { await fbDelete(`/rooms/${roomCode}/players/${id}`); } catch (e) {}
+                    }
+                }
+
                 // Semua data room disimpan dalam SATU dokumen: rooms/{roomCode}
                 // "players" dan "answers" adalah field bertipe Map di dalam dokumen itu (bukan subcollection),
                 // supaya perilaku merge/patch persis seperti struktur RTDB sebelumnya.
@@ -3847,32 +3881,70 @@
                 function fbUnlisten() { if (fbUnsub) { fbUnsub();
                         fbUnsub = null; } }
 
-                // CATATAN HEMAT KUOTA FIRESTORE:
-                // Dulu di sini ada polling aktif (setInterval fbGet tiap 1.5-2 detik) yang berjalan
-                // BERBARENGAN dengan listener real-time (onSnapshot) di listenRoom(). Itu boros sekali,
-                // karena onSnapshot SUDAH menerima setiap perubahan players/answers/buzzer/status secara
-                // real-time -- polling di atasnya cuma menduplikasi read yang sama berulang-ulang.
-                // Sekarang polling dinonaktifkan (jadi fallback kosong) supaya jumlah read Firestore
-                // tidak lagi kelipatan dari jumlah pemain x jumlah polling. Listener onSnapshot di
-                // listenRoom() tetap menangani semua sinkronisasi data secara real-time seperti biasa.
-                // Fungsi start/stop dibiarkan ada (no-op) supaya seluruh pemanggilnya tidak perlu diubah.
                 let answersPollInterval = null;
-                function startAnswersPolling() { /* dinonaktifkan, sudah dicover onSnapshot */ }
+
+                function startAnswersPolling() {
+                    stopAnswersPolling();
+                    answersPollInterval = setInterval(async () => {
+                        if (!STATE.gameActive || STATE.mode !== 'room') return;
+                        try {
+                            const answersData = await fbGet(`/rooms/${STATE.roomCode}/answers`);
+                            if (answersData) {
+                                let changed = false;
+                                Object.entries(answersData).forEach(([pid, ans]) => {
+                                    if (ans.qIdx !== STATE.idx) return;
+                                    if (STATE.roomAnsweredUsers[pid]) return;
+                                    STATE.roomAnsweredUsers[pid] = { nama: ans.nama, isCorrect: ans.isCorrect };
+                                    changed = true;
+                                });
+                                if (changed) renderRoomParticipants();
+                            }
+                            const playersData = await fbGet(`/rooms/${STATE.roomCode}/players`);
+                            if (playersData) {
+                                Object.entries(playersData).forEach(([id, p]) => {
+                                    if (!p) return;
+                                    if (!STATE.players[id]) STATE.players[id] = {};
+                                    if (p.nama !== undefined) STATE.players[id].nama = p.nama;
+                                    if (p.kelas !== undefined) STATE.players[id].kelas = p.kelas;
+                                    if (id === STATE.myId) { if (!(id in STATE.scores)) STATE.scores[id] = p.score || 0; return; }
+                                    if (p.score !== undefined) STATE.scores[id] = p.score;
+                                    else if (!(id in STATE.scores)) STATE.scores[id] = 0;
+                                });
+                                renderScoreBoard();
+                                renderRoomParticipants();
+                            }
+                        } catch (e) {}
+                    }, 1500);
+                }
+
                 function stopAnswersPolling() { if (answersPollInterval) { clearInterval(answersPollInterval);
                         answersPollInterval = null; } }
 
                 let lobbyPollInterval = null;
+
                 function startLobbyPolling() {
-                    // Indikator "Sinkronisasi..." tetap dianimasikan secara visual saja (tanpa fbGet),
-                    // supaya UI tidak berubah tapi tidak lagi memakan kuota read.
                     stopLobbyPolling();
                     const indicator = document.getElementById('lobby-poll-indicator');
                     let dots = 0;
-                    lobbyPollInterval = setInterval(() => {
-                        dots = (dots + 1) % 4;
-                        if (indicator) indicator.textContent = '🔄 Sinkronisasi' + '.'.repeat(dots);
+                    lobbyPollInterval = setInterval(async () => {
+                        try {
+                            const roomData = await fbGet(`/rooms/${STATE.roomCode}`);
+                            if (!roomData) return;
+                            if (roomData.players) {
+                                STATE.players = {};
+                                Object.entries(roomData.players).forEach(([id, p]) => { STATE.players[id] = {
+                                        nama: p.nama, kelas: p.kelas };
+                                    STATE.scores[id] = p.score || 0; });
+                                renderLobbyPlayers();
+                            }
+                            if (!STATE.isHost && roomData.status === 'playing' && roomData.state && !STATE
+                                .gameActive) stopLobbyPolling();
+                            dots = (dots + 1) % 4;
+                            if (indicator) indicator.textContent = '🔄 Sinkronisasi' + '.'.repeat(dots);
+                        } catch (e) {}
                     }, 2000);
                 }
+
                 function stopLobbyPolling() { if (lobbyPollInterval) { clearInterval(lobbyPollInterval);
                         lobbyPollInterval = null; } }
 
@@ -3893,7 +3965,7 @@
                     await loadSoalUntukMapel(mapel);
                     STATE.roomCode = genRoomCode();
                     STATE.isHost = true;
-                    STATE.myId = 'p_' + Date.now();
+                    STATE.myId = getDeviceId();
                     STATE.players = {};
                     STATE.scores = {};
                     STATE.gameActive = false;
@@ -3919,27 +3991,21 @@
                     STATE.nama = nama;
                     STATE.kelas = kelas || '-';
                     STATE.isHost = false;
-                    STATE.myId = 'p_' + Date.now();
+                    STATE.myId = getDeviceId();
                     STATE.players = {};
                     STATE.scores = {};
                     STATE.gameActive = false;
                     STATE.roomJumlahSoal = roomData.jumlahSoal || 10;
-                    // Bersihkan entri lama dengan nama yang sama (mis. sisa dari sesi sebelumnya
-                    // yang keluar tanpa sempat terhapus / tab ditutup paksa), supaya nama tidak
-                    // muncul dobel di daftar peserta.
-                    if (roomData.players) {
-                        const namaKey = nama.trim().toLowerCase();
-                        const stalePids = Object.entries(roomData.players)
-                            .filter(([pid, p]) => p && (p.nama || '').trim().toLowerCase() === namaKey)
-                            .map(([pid]) => pid);
-                        for (const pid of stalePids) {
-                            await fbDelete(`/rooms/${code}/players/${pid}`);
-                            delete STATE.players[pid];
-                            delete STATE.scores[pid];
-                        }
-                    }
+                    // Hapus dulu entri lama dengan nama yang sama (mis. sisa dari sebelum keluar/refresh)
+                    // supaya tidak ada duplikasi nama di daftar peserta.
+                    await cleanupDuplicatePlayers(code, roomData.players, STATE.myId, nama);
                     await fbPatch(`/rooms/${code}/players`, { [STATE.myId]: { nama, kelas: kelas || '-', score: 0 } });
-                    window.addEventListener('beforeunload', () => fbDelete(`/rooms/${code}/players/${STATE.myId}`));
+                    // Best-effort: kalau tab ditutup/refresh tanpa klik "Keluar Room", coba hapus
+                    // entri kita supaya tidak jadi peserta "hantu" (ID persisten tetap jadi jaring
+                    // pengaman utama kalau permintaan hapus ini tidak sempat selesai).
+                    window.addEventListener('beforeunload', () => {
+                        if (!STATE.gameActive) fbDelete(`/rooms/${STATE.roomCode}/players/${STATE.myId}`);
+                    });
                     enterLobby();
                     listenRoom();
                 }
