@@ -3776,40 +3776,6 @@
 
                 function genRoomCode() { return Math.random().toString(36).substr(2, 4).toUpperCase(); }
 
-                // ID pemain dibuat persisten per-device (disimpan di localStorage), bukan dibuat baru
-                // (mis. 'p_' + Date.now()) setiap kali join. Sebelumnya, tiap kali user keluar lalu
-                // join lagi ke room yang sama, ia mendapat ID baru sehingga entri lamanya di
-                // players tidak pernah tergantikan/terhapus -> namanya numpuk/dobel di daftar peserta.
-                // Dengan ID yang sama untuk device yang sama, join ulang akan menimpa (overwrite)
-                // entri lama, bukan menambah entri baru.
-                function getDeviceId() {
-                    try {
-                        let id = localStorage.getItem('ccm_device_id');
-                        if (!id) {
-                            id = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-                            localStorage.setItem('ccm_device_id', id);
-                        }
-                        return id;
-                    } catch (e) {
-                        // fallback kalau localStorage tidak tersedia (mis. mode privat ketat)
-                        return 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-                    }
-                }
-
-                // Bersihkan entri peserta "hantu" (sisa join sebelumnya) yang punya nama sama
-                // tapi ID berbeda dari ID kita saat ini -- jaga-jaga kalau localStorage sempat
-                // hilang/berganti device sehingga ID baru dibuat lagi.
-                async function cleanupDuplicatePlayers(roomCode, players, myId, nama) {
-                    if (!players) return;
-                    const namaNorm = (nama || '').trim().toLowerCase();
-                    const staleIds = Object.entries(players)
-                        .filter(([id, p]) => id !== myId && p && (p.nama || '').trim().toLowerCase() === namaNorm)
-                        .map(([id]) => id);
-                    for (const id of staleIds) {
-                        try { await fbDelete(`/rooms/${roomCode}/players/${id}`); } catch (e) {}
-                    }
-                }
-
                 // Semua data room disimpan dalam SATU dokumen: rooms/{roomCode}
                 // "players" dan "answers" adalah field bertipe Map di dalam dokumen itu (bukan subcollection),
                 // supaya perilaku merge/patch persis seperti struktur RTDB sebelumnya.
@@ -3965,7 +3931,7 @@
                     await loadSoalUntukMapel(mapel);
                     STATE.roomCode = genRoomCode();
                     STATE.isHost = true;
-                    STATE.myId = getDeviceId();
+                    STATE.myId = 'p_' + Date.now();
                     STATE.players = {};
                     STATE.scores = {};
                     STATE.gameActive = false;
@@ -3991,21 +3957,12 @@
                     STATE.nama = nama;
                     STATE.kelas = kelas || '-';
                     STATE.isHost = false;
-                    STATE.myId = getDeviceId();
+                    STATE.myId = 'p_' + Date.now();
                     STATE.players = {};
                     STATE.scores = {};
                     STATE.gameActive = false;
                     STATE.roomJumlahSoal = roomData.jumlahSoal || 10;
-                    // Hapus dulu entri lama dengan nama yang sama (mis. sisa dari sebelum keluar/refresh)
-                    // supaya tidak ada duplikasi nama di daftar peserta.
-                    await cleanupDuplicatePlayers(code, roomData.players, STATE.myId, nama);
                     await fbPatch(`/rooms/${code}/players`, { [STATE.myId]: { nama, kelas: kelas || '-', score: 0 } });
-                    // Best-effort: kalau tab ditutup/refresh tanpa klik "Keluar Room", coba hapus
-                    // entri kita supaya tidak jadi peserta "hantu" (ID persisten tetap jadi jaring
-                    // pengaman utama kalau permintaan hapus ini tidak sempat selesai).
-                    window.addEventListener('beforeunload', () => {
-                        if (!STATE.gameActive) fbDelete(`/rooms/${STATE.roomCode}/players/${STATE.myId}`);
-                    });
                     enterLobby();
                     listenRoom();
                 }
