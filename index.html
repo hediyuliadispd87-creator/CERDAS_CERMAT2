@@ -3847,70 +3847,32 @@
                 function fbUnlisten() { if (fbUnsub) { fbUnsub();
                         fbUnsub = null; } }
 
+                // CATATAN HEMAT KUOTA FIRESTORE:
+                // Dulu di sini ada polling aktif (setInterval fbGet tiap 1.5-2 detik) yang berjalan
+                // BERBARENGAN dengan listener real-time (onSnapshot) di listenRoom(). Itu boros sekali,
+                // karena onSnapshot SUDAH menerima setiap perubahan players/answers/buzzer/status secara
+                // real-time -- polling di atasnya cuma menduplikasi read yang sama berulang-ulang.
+                // Sekarang polling dinonaktifkan (jadi fallback kosong) supaya jumlah read Firestore
+                // tidak lagi kelipatan dari jumlah pemain x jumlah polling. Listener onSnapshot di
+                // listenRoom() tetap menangani semua sinkronisasi data secara real-time seperti biasa.
+                // Fungsi start/stop dibiarkan ada (no-op) supaya seluruh pemanggilnya tidak perlu diubah.
                 let answersPollInterval = null;
-
-                function startAnswersPolling() {
-                    stopAnswersPolling();
-                    answersPollInterval = setInterval(async () => {
-                        if (!STATE.gameActive || STATE.mode !== 'room') return;
-                        try {
-                            const answersData = await fbGet(`/rooms/${STATE.roomCode}/answers`);
-                            if (answersData) {
-                                let changed = false;
-                                Object.entries(answersData).forEach(([pid, ans]) => {
-                                    if (ans.qIdx !== STATE.idx) return;
-                                    if (STATE.roomAnsweredUsers[pid]) return;
-                                    STATE.roomAnsweredUsers[pid] = { nama: ans.nama, isCorrect: ans.isCorrect };
-                                    changed = true;
-                                });
-                                if (changed) renderRoomParticipants();
-                            }
-                            const playersData = await fbGet(`/rooms/${STATE.roomCode}/players`);
-                            if (playersData) {
-                                Object.entries(playersData).forEach(([id, p]) => {
-                                    if (!p) return;
-                                    if (!STATE.players[id]) STATE.players[id] = {};
-                                    if (p.nama !== undefined) STATE.players[id].nama = p.nama;
-                                    if (p.kelas !== undefined) STATE.players[id].kelas = p.kelas;
-                                    if (id === STATE.myId) { if (!(id in STATE.scores)) STATE.scores[id] = p.score || 0; return; }
-                                    if (p.score !== undefined) STATE.scores[id] = p.score;
-                                    else if (!(id in STATE.scores)) STATE.scores[id] = 0;
-                                });
-                                renderScoreBoard();
-                                renderRoomParticipants();
-                            }
-                        } catch (e) {}
-                    }, 1500);
-                }
-
+                function startAnswersPolling() { /* dinonaktifkan, sudah dicover onSnapshot */ }
                 function stopAnswersPolling() { if (answersPollInterval) { clearInterval(answersPollInterval);
                         answersPollInterval = null; } }
 
                 let lobbyPollInterval = null;
-
                 function startLobbyPolling() {
+                    // Indikator "Sinkronisasi..." tetap dianimasikan secara visual saja (tanpa fbGet),
+                    // supaya UI tidak berubah tapi tidak lagi memakan kuota read.
                     stopLobbyPolling();
                     const indicator = document.getElementById('lobby-poll-indicator');
                     let dots = 0;
-                    lobbyPollInterval = setInterval(async () => {
-                        try {
-                            const roomData = await fbGet(`/rooms/${STATE.roomCode}`);
-                            if (!roomData) return;
-                            if (roomData.players) {
-                                STATE.players = {};
-                                Object.entries(roomData.players).forEach(([id, p]) => { STATE.players[id] = {
-                                        nama: p.nama, kelas: p.kelas };
-                                    STATE.scores[id] = p.score || 0; });
-                                renderLobbyPlayers();
-                            }
-                            if (!STATE.isHost && roomData.status === 'playing' && roomData.state && !STATE
-                                .gameActive) stopLobbyPolling();
-                            dots = (dots + 1) % 4;
-                            if (indicator) indicator.textContent = '🔄 Sinkronisasi' + '.'.repeat(dots);
-                        } catch (e) {}
+                    lobbyPollInterval = setInterval(() => {
+                        dots = (dots + 1) % 4;
+                        if (indicator) indicator.textContent = '🔄 Sinkronisasi' + '.'.repeat(dots);
                     }, 2000);
                 }
-
                 function stopLobbyPolling() { if (lobbyPollInterval) { clearInterval(lobbyPollInterval);
                         lobbyPollInterval = null; } }
 
